@@ -113,6 +113,7 @@ lime/
 ├─ 07-Reading/              ← one note per book
 ├─ 08-Notes/                ← anything that doesn't fit above
 ├─ 09-Archive/              ← done, dead, abandoned
+├─ _assets/                 ← images used by the vault (home-banner.jpg)
 └─ _templates/              ← Templater templates + source PDFs for later RAG
 ```
 
@@ -269,6 +270,29 @@ container we own.
 │    stale list    │   (module deadlines)   │ Active projects       │
 └──────────────────┴────────────────────────┴───────────────────────┘
 ```
+
+### Header banner
+
+A cropped banner strip above the three columns — the reference's idea, sized so it does not
+cost a scroll. Rejected alternatives: full-height image (pushes "Due & overdue" below the
+fold — the single most important panel) and a corner thumbnail (cheapest, but too plain for
+what the user wanted).
+
+- **Image:** `_assets/home-banner.jpg` — 1920×1080, committed to the repo.
+- **Embed, not a plugin.** A plain `![[home-banner.jpg]]` at the top of `Home.md` plus our CSS
+  snippet. No banners plugin; consistent with rejecting `obsidian-columns`.
+- **Height ~170px**, `object-fit: cover`, `object-position: 50% 30%`. The subject's face sits
+  ~30% down the frame; that offset centres the strip on it instead of slicing across the eyes
+  or landing on the monitors behind her.
+- **Today's date overlaid** bottom-left in white with a soft text-shadow, over a subtle
+  bottom gradient so it stays legible whatever the crop lands on.
+- **Filename referenced in exactly one place** so swapping the image is a one-line edit.
+  `object-fit: cover` means any replacement works without resizing.
+- **Mobile:** reduce to ~110px. The columns already collapse to one scrolling column; the
+  banner must not eat a third of an iPhone screen.
+- **Note:** this image is dark and heavily saturated. It sits naturally on a dark Obsidian
+  theme. If the user later switches to a light theme, the banner will read as a heavy dark
+  block and may want a different image — not a blocker, just a known interaction.
 
 ### Implementation requirements
 
