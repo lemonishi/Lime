@@ -1,0 +1,17 @@
+# Brainstorming companion scratch (mockups persist here, not worth versioning)
+.superpowers/
+
+# Obsidian per-device state — churns constantly, causes conflicts, means nothing
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+.obsidian/file-recovery.json
+.obsidian/plugins/*/data.json
+
+# Secrets (Google OAuth etc., if phase B adds them)
+scripts/secrets/*
+!scripts/secrets/.gitkeep
+
+# OS noise
+.DS_Store
+.trash/
