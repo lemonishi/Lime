@@ -137,7 +137,6 @@ Expected: PASS — 2 tests
 - [ ] **Step 6: Commit**
 
 ```bash
-git add package.json tests/vault.test.mjs .gitkeep */.gitkeep **/*/.gitkeep
 git add -A
 git commit -m "feat: vault folder skeleton with structural test"
 ```
@@ -530,7 +529,6 @@ test('dueStatus handles undated tasks', () => {
 });
 
 test('compareTasks sorts most-overdue first, undated last', () => {
-  const today = '2026-07-28';
   const tasks = [
     { id: 'undated', dueISO: null },
     { id: 'later',   dueISO: '2026-08-12' },
@@ -538,7 +536,7 @@ test('compareTasks sorts most-overdue first, undated last', () => {
     { id: 'today',   dueISO: '2026-07-28' },
     { id: 'old',     dueISO: '2026-07-26' },
   ];
-  const order = tasks.sort((a, b) => lime.compareTasks(a, b, today)).map((t) => t.id);
+  const order = tasks.sort(lime.compareTasks).map((t) => t.id);
   assert.deepEqual(order, ['veryOld', 'old', 'today', 'later', 'undated']);
 });
 ```
