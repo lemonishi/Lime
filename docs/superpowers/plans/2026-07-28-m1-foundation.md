@@ -15,6 +15,7 @@ Every task's requirements implicitly include this section.
 - **Obsidian is 1.12.7 and cannot be upgraded** — 1.13.x is a paid-Catalyst beta. Never install a plugin whose manifest `minAppVersion` exceeds `1.12.7`.
 - **Version pins are load-bearing.** Templater `2.20.6` and QuickAdd `2.12.3` (both arrive in M3) break above these versions. Dataview `0.5.68`, Tasks `8.3.0` are M1's pins. Obsidian's plugin updater will offer newer builds — the pin-drift test exists to catch that.
 - **No npm dependencies.** Node 24's built-in `node:test` and `node:assert` only. Nothing in `package.json` beyond scripts.
+- **The full-suite command is bare `node --test`** (that is, `npm test`). Node 22+ treats positional arguments to `--test` as **globs, not directories** — `node --test tests/` tries to import a module literally named `tests` and dies with `MODULE_NOT_FOUND`. Bare `node --test` recursively discovers `*.test.mjs` from the working directory, including subdirectories, and skips `node_modules`. Explicit single-file paths (`node --test tests/lib.test.mjs`) work normally and are what the per-task RED/GREEN steps use. Verified on Node v24.0.2.
 - **Every note stays plain markdown with plain frontmatter.** No plugin may become a store of data. If Dataview died tonight, zero notes are lost.
 - **Dashboard code must work on iOS.** No `require()`, no `child_process`, no Node APIs in anything under `_scripts/` that `Home.md` loads. Vault adapter reads only.
 - **No uncleaned `setInterval`.** The reference vault leaks a timer per render. Re-render on Dataview's own refresh; if an interval is ever unavoidable, register it for disposal.
@@ -109,7 +110,7 @@ Expected: FAIL — `missing directory: 00-Home`
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/"
+    "test": "node --test"
   }
 }
 ```
