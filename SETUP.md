@@ -98,6 +98,7 @@ Then restart Obsidian.
 Work through this before we plan M2.
 
 - [ ] Obsidian opens the lime vault without errors in the developer console
+- [ ] `00-Home/Home.md` renders panels, **not** an "Evaluation Error: SyntaxError" message
 - [ ] `00-Home/Home.md` shows the banner image, cropped to a strip, with today's date over it
 - [ ] The date reads correctly — check it again after 9pm, which is when a UTC bug would show
 - [ ] Today's daily note can be created from the command palette (**Open today's daily note**)

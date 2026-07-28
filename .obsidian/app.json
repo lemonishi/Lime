@@ -1,4 +1,6 @@
 {
   "readableLineLength": false,
-  "userIgnoreFilters": ["docs/"]
+  "userIgnoreFilters": [
+    "docs/"
+  ]
 }

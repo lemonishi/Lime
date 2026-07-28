@@ -18,6 +18,7 @@ Every task's requirements implicitly include this section.
 - **The full-suite command is bare `node --test`** (that is, `npm test`). Node 22+ treats positional arguments to `--test` as **globs, not directories** — `node --test tests/` tries to import a module literally named `tests` and dies with `MODULE_NOT_FOUND`. Bare `node --test` recursively discovers `*.test.mjs` from the working directory, including subdirectories, and skips `node_modules`. Explicit single-file paths (`node --test tests/lib.test.mjs`) work normally and are what the per-task RED/GREEN steps use. Verified on Node v24.0.2.
 - **Every note stays plain markdown with plain frontmatter.** No plugin may become a store of data. If Dataview died tonight, zero notes are lost.
 - **Dashboard code must work on iOS.** No `require()`, no `child_process`, no Node APIs in anything under `_scripts/` that `Home.md` loads. Vault adapter reads only.
+- **Never end a `dataviewjs` block with a `//` line comment.** Dataview wraps `await`-containing scripts by string concatenation — `"(async () => { " + script + " })()"` — and Obsidian strips the trailing newline first, so a final line comment swallows the closing `})()`. The block then fails with `SyntaxError: Unexpected end of input`, identifying neither the block nor the reason. Guarded by `tests/dashboard.test.mjs`.
 - **No uncleaned `setInterval`.** The reference vault leaks a timer per render. Re-render on Dataview's own refresh; if an interval is ever unavoidable, register it for disposal.
 - **No inline `onclick` with string-built HTML.** Note titles contain quotes. Attach listeners with `addEventListener`.
 - **No hardcoded vault name.** Use `app.workspace.openLinkText`, never a literal `obsidian://open?vault=…` URL.
@@ -53,6 +54,7 @@ Likewise, **M1 installs only Dataview and Tasks.** Templater and QuickAdd are pi
 | `.obsidian/community-plugins.json` | Enabled plugin list. |
 | `tests/versions.test.mjs` | Unit tests for version gating. |
 | `tests/lib.test.mjs` | Unit tests for dashboard helpers, loaded the same way Obsidian loads them. |
+| `tests/dashboard.test.mjs` | Parses `Home.md`'s `dataviewjs` blocks through Dataview's exact `await` wrapping, so a block that would die in the app fails here first. |
 | `tests/vault.test.mjs` | Structural guard: skeleton exists, installed plugin versions still match pins. |
 | `SETUP.md` | The manual steps only a human with the GUI can do, plus the M1 acceptance checklist. |
 
@@ -887,6 +889,7 @@ const todayISO = L.fmtISO(now);
 const grid = dv.container.createDiv({ cls: 'lime-grid' });
 const colLeft = grid.createDiv({ cls: 'lime-col' });
 const colMid = grid.createDiv({ cls: 'lime-col' });
+// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
 const colRight = grid.createDiv({ cls: 'lime-col' });
 
 function panel(col, title) {
@@ -983,8 +986,6 @@ function openNote(path) {
     }
   }
 }
-
-// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
 ```
 ````
 

@@ -308,6 +308,12 @@ what the user wanted).
 
 - **Widgets hide themselves when empty.** Layout A's weakness is visible dead zones; an
   unfed reading widget must vanish rather than render an empty box every morning.
+- **Never end a `dataviewjs` block with a `//` line comment.** When a script contains `await`,
+  Dataview wraps it by *string concatenation* — `"(async () => { " + script + " })()"` — and
+  Obsidian strips the trailing newline first. A final line comment therefore swallows the
+  closing `})()`, and the block dies with `SyntaxError: Unexpected end of input`, naming
+  neither the block nor the cause. Put trailing notes above the last statement, or use
+  `/* … */`. Guarded by `tests/dashboard.test.mjs`, which applies Dataview's exact wrapping.
 - **No uncleaned `setInterval`.** The reference leaks a timer per render. Register any
   interval so Obsidian can dispose of it, or re-render on vault events instead.
 - **No inline `onclick` string-built HTML.** Attach listeners properly; note titles can

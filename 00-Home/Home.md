@@ -38,6 +38,7 @@ const todayISO = L.fmtISO(now);
 const grid = dv.container.createDiv({ cls: 'lime-grid' });
 const colLeft = grid.createDiv({ cls: 'lime-col' });
 const colMid = grid.createDiv({ cls: 'lime-col' });
+// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
 const colRight = grid.createDiv({ cls: 'lime-col' });
 
 function panel(col, title) {
@@ -132,6 +133,4 @@ function openNote(path) {
     }
   }
 }
-
-// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
 ```
