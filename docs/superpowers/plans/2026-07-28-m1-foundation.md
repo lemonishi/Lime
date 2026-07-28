@@ -643,7 +643,9 @@ git commit -m "feat: pure dashboard date and task-sorting helpers"
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces the class names Task 6's widgets emit: `.lime-grid`, `.lime-col`, `.lime-banner`, `.lime-banner-date`, `.lime-panel`, `.lime-panel h5`, `.lime-row`, `.lime-row .lime-meta`, and tone modifiers `.tone-overdue`, `.tone-today`, `.tone-soon`, `.tone-later`.
+- Produces the class names Task 6's widgets emit: `.lime-grid`, `.lime-col`, `.lime-banner`, `.lime-banner-date`, `.lime-panel`, `.lime-panel h5`, `.lime-row`, `.lime-row .lime-text`, `.lime-row .lime-meta`, and tone modifiers `.lime-tone-overdue`, `.lime-tone-today`, `.lime-tone-soon`, `.lime-tone-later`.
+
+**Every selector in this file is `.lime-`-prefixed.** Obsidian applies CSS snippets globally across the app, so an unprefixed generic selector like `.tone-today` could restyle elements belonging to another snippet or theme. The `lime-tone-` prefix is deliberate namespacing, not verbosity.
 
 - [ ] **Step 1: Write the stylesheet**
 
@@ -742,10 +744,10 @@ Create `.obsidian/snippets/lime.css`. This replaces the `obsidian-columns` plugi
   cursor: pointer;
 }
 
-.tone-overdue { color: var(--text-error); opacity: 1; font-weight: 600; }
-.tone-today   { color: var(--text-accent); opacity: 1; }
-.tone-soon    { opacity: 0.65; }
-.tone-later   { opacity: 0.45; }
+.lime-tone-overdue { color: var(--text-error); opacity: 1; font-weight: 600; }
+.lime-tone-today   { color: var(--text-accent); opacity: 1; }
+.lime-tone-soon    { opacity: 0.65; }
+.lime-tone-later   { opacity: 0.45; }
 
 /* iPhone: one scrolling column, shorter banner (spec §8) */
 @media (max-width: 700px) {
@@ -797,7 +799,7 @@ git commit -m "feat: dashboard stylesheet with CSS-grid columns and banner"
 - Create: `00-Home/Home.md`, `00-Home/Inbox.md`
 
 **Interfaces:**
-- Consumes: `globalThis.lime` from Task 4; the CSS classes from Task 5; the `dataview` and `obsidian-tasks-plugin` installs from Task 3.
+- Consumes: `globalThis.lime` from Task 4; the CSS classes from Task 5 (**tone modifiers are `lime-tone-*`, prefixed**); the `dataview` and `obsidian-tasks-plugin` installs from Task 3.
 - Produces: the dashboard. M2 will insert an events panel as the first child of the middle column.
 
 - [ ] **Step 1: Create the Inbox**
@@ -889,7 +891,7 @@ function openNote(path) {
       const cb = row.createEl('input', { type: 'checkbox' });
       const text = row.createSpan({ cls: 'lime-text', text: t.text });
       const status = L.dueStatus(t.dueISO, todayISO);
-      row.createSpan({ cls: `lime-meta tone-${status.tone}`, text: status.label });
+      row.createSpan({ cls: `lime-meta lime-tone-${status.tone}`, text: status.label });
 
       text.addEventListener('click', () => openNote(t.path));
       cb.addEventListener('click', async (e) => {
