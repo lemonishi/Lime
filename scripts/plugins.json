@@ -1,0 +1,17 @@
+{
+  "appVersion": "1.12.7",
+  "plugins": [
+    {
+      "id": "dataview",
+      "repo": "blacksmithgu/obsidian-dataview",
+      "pin": "0.5.68",
+      "why": "dashboard widgets; unmaintained since Apr 2025, accepted knowingly (spec D7)"
+    },
+    {
+      "id": "obsidian-tasks-plugin",
+      "repo": "obsidian-tasks-group/obsidian-tasks",
+      "pin": "8.3.0",
+      "why": "due-date semantics for inline checkboxes"
+    }
+  ]
+}

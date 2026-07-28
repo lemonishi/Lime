@@ -1,0 +1,108 @@
+/* lime dashboard — replaces the obsidian-columns plugin (spec §3) */
+
+.lime-banner {
+  position: relative;
+  height: 170px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.lime-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* the subject's face sits ~30% down the frame (spec §8) */
+  object-position: 50% 30%;
+  display: block;
+}
+.lime-banner::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 70px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.55));
+}
+.lime-banner-date {
+  position: absolute;
+  left: 18px;
+  bottom: 12px;
+  z-index: 1;
+  color: #fff;
+  font-size: 1.35em;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+}
+
+.lime-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.lime-col { min-width: 0; }
+
+.lime-panel {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 9px;
+  background: var(--background-secondary);
+  padding: 11px 12px;
+  margin-bottom: 10px;
+}
+.lime-panel h5 {
+  margin: 0 0 8px;
+  font-size: 0.68em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.6;
+  font-weight: 700;
+}
+
+.lime-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: var(--background-primary);
+  margin-bottom: 4px;
+  font-size: 0.88em;
+}
+.lime-row .lime-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lime-row .lime-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-size: 0.85em;
+}
+.lime-row input[type='checkbox'] {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--text-accent);
+  cursor: pointer;
+}
+
+.lime-tone-overdue { color: var(--text-error); opacity: 1; font-weight: 600; }
+.lime-tone-today   { color: var(--text-accent); opacity: 1; }
+.lime-tone-soon    { opacity: 0.65; }
+.lime-tone-later   { opacity: 0.45; }
+
+/* Layout A is dense by design (spec §8). Obsidian's readable-line-length would
+   squeeze the three columns into a ~700px column and ellipsise almost every row. */
+.lime-home .markdown-preview-sizer,
+.lime-home .cm-sizer { max-width: none; }
+
+/* iPhone: one scrolling column, shorter banner (spec §8) */
+@media (max-width: 700px) {
+  .lime-grid { grid-template-columns: 1fr; }
+  .lime-banner { height: 110px; }
+  .lime-banner-date { font-size: 1.1em; left: 12px; bottom: 9px; }
+}

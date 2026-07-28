@@ -130,7 +130,7 @@ ever the wrong kind.
 ```yaml
 # type: daily — 01-Daily/2026-07-28.md
 type: daily
-date: 2026-07-28
+date: "2026-07-28"   # quoted — see note below
 # body: ## Log (freeform, [[links]] encouraged) + ## Tasks
 
 # type: module — university course
@@ -195,6 +195,16 @@ month: 2026-07
 # body: one line per expense, written by capture, never hand-typed:
 # - 28 Jul · 4.50 · food · lunch
 ```
+
+### A note on quoting dates in frontmatter
+
+**Values written by a *template* must be quoted; values written by a human or by capture need not be.**
+
+The daily note's `date` comes from core Daily Notes' `{{date:YYYY-MM-DD}}` placeholder. Unquoted, YAML reads a value starting with `{` as a flow mapping, so `{{...}}` is a mapping used as a key — which YAML rejects. The template file would sit permanently unparseable in the vault, and Obsidian's metadata cache and Dataview index *every* markdown file, template folders included, before any filter applies. Verified against a standards-compliant parser.
+
+Quoting has a second effect worth knowing: the substituted value stays a **string** (`"2026-07-29"`) instead of becoming a YAML date object. That is what we want here — `_scripts/lib.js` works in `YYYY-MM-DD` strings throughout, and those sort correctly lexicographically.
+
+The other date fields in this spec (`due`, `applied`, `last_attempted`, `finished`, `next_action`) are written directly into real notes, never through a `{{...}}` placeholder, so they carry no such hazard. Leaving them unquoted lets Dataview type them as dates, which is what its date filters expect. Do not "normalise" the two cases to match — they differ for a reason.
 
 ### Linking policy
 

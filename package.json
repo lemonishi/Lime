@@ -1,0 +1,10 @@
+{
+  "name": "lime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "install-plugins": "node scripts/install-plugins.mjs"
+  }
+}
