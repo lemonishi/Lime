@@ -995,13 +995,17 @@ Create `_templates/daily.md`. Core Daily Notes substitutes `{{date}}` — **no T
 ```markdown
 ---
 type: daily
-date: {{date:YYYY-MM-DD}}
+date: "{{date:YYYY-MM-DD}}"
 ---
 
 ## Log
 
 ## Tasks
 ```
+
+**The quotes around `{{date:YYYY-MM-DD}}` are required, not stylistic.** Unquoted, a YAML value starting with `{` is read as the beginning of a flow mapping, so `{{...}}` is a mapping used as a key — which YAML rejects outright. Verified with a standards-compliant parser: the unquoted form raises `ConstructorError: while constructing a mapping`, and Obsidian's metadata cache and Dataview both index every markdown file in the vault, including this template, before any folder filter applies. So the unquoted form puts a permanently unparseable file in the vault.
+
+Quoting also makes the substituted value a **string** (`date: "2026-07-29"`) rather than a YAML date object. That is the behaviour we want: `_scripts/lib.js` works in `YYYY-MM-DD` strings throughout, and `YYYY-MM-DD` sorts correctly lexicographically.
 
 - [ ] **Step 2: Configure Daily Notes**
 
