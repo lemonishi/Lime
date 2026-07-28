@@ -444,7 +444,7 @@ and a non-zero exit code. Confirm `scripts/plugins.json` is restored to two plug
 - [ ] **Step 8: Run the full test suite**
 
 Run: `npm test`
-Expected: PASS — 4 tests
+Expected: PASS — 10 tests (2 from Task 1, 6 from Task 2, 2 added here)
 
 - [ ] **Step 9: Commit**
 
@@ -624,7 +624,7 @@ Expected: PASS — 9 tests
 - [ ] **Step 5: Run the full suite**
 
 Run: `npm test`
-Expected: PASS — 13 tests
+Expected: PASS — 19 tests (10 from Tasks 1–3, 9 added here)
 
 - [ ] **Step 6: Commit**
 
@@ -1065,7 +1065,7 @@ Expected: `daily notes config ok → 01-Daily/YYYY-MM-DD.md from _templates/dail
 - [ ] **Step 5: Run the full suite**
 
 Run: `npm test`
-Expected: PASS — 13 tests
+Expected: PASS — 19 tests
 
 - [ ] **Step 6: Commit**
 
@@ -1186,7 +1186,7 @@ M4 and M5 fill it.
 - [ ] **Step 2: Run the full suite one final time**
 
 Run: `npm test`
-Expected: PASS — 13 tests across 3 files
+Expected: PASS — 19 tests across 3 files
 
 - [ ] **Step 3: Commit**
 
