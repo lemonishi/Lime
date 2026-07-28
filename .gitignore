@@ -1,4 +1,58 @@
-# Brainstorming companion scratch (mockups persist here, not worth versioning)
+# ─────────────────────────────────────────────────────────────────────────────
+# PRIVACY BOUNDARY — this repository is PUBLIC.
+#
+# The folder skeleton is tracked (via .gitkeep) because it is the useful part of
+# the template. The *contents* of those folders are your life — daily notes, job
+# applications, expenses, reading — and are excluded here.
+#
+# Git history is permanent. If you ever commit a personal note by accident,
+# deleting it later does NOT remove it from history. Check `git status` before
+# committing.
+# ─────────────────────────────────────────────────────────────────────────────
+
+01-Daily/*
+!01-Daily/.gitkeep
+
+02-Learning/Modules/*
+!02-Learning/Modules/.gitkeep
+02-Learning/Courses/*
+!02-Learning/Courses/.gitkeep
+02-Learning/Drills/*
+!02-Learning/Drills/.gitkeep
+02-Learning/Concepts/*
+!02-Learning/Concepts/.gitkeep
+
+03-Work/*
+!03-Work/.gitkeep
+
+04-Projects/*
+!04-Projects/.gitkeep
+
+05-JobSearch/Applications/*
+!05-JobSearch/Applications/.gitkeep
+05-JobSearch/Companies/*
+!05-JobSearch/Companies/.gitkeep
+
+06-Money/*
+!06-Money/.gitkeep
+
+07-Reading/*
+!07-Reading/.gitkeep
+
+08-Notes/*
+!08-Notes/.gitkeep
+
+09-Archive/*
+!09-Archive/.gitkeep
+
+# Capture inbox — fills with whatever you dump into it. Local only.
+00-Home/Inbox.md
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tooling and per-device state
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Brainstorming/SDD scratch
 .superpowers/
 
 # Obsidian per-device state — churns constantly, causes conflicts, means nothing
@@ -6,6 +60,9 @@
 .obsidian/workspace-mobile.json
 .obsidian/graph.json
 .obsidian/file-recovery.json
+
+# Plugin settings are per-device, EXCEPT Dataview's — that one carries
+# enableDataviewJs: true, without which every dashboard block renders an error.
 .obsidian/plugins/*/data.json
 !.obsidian/plugins/dataview/data.json
 
