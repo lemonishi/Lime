@@ -90,10 +90,10 @@
   cursor: pointer;
 }
 
-.tone-overdue { color: var(--text-error); opacity: 1; font-weight: 600; }
-.tone-today   { color: var(--text-accent); opacity: 1; }
-.tone-soon    { opacity: 0.65; }
-.tone-later   { opacity: 0.45; }
+.lime-tone-overdue { color: var(--text-error); opacity: 1; font-weight: 600; }
+.lime-tone-today   { color: var(--text-accent); opacity: 1; }
+.lime-tone-soon    { opacity: 0.65; }
+.lime-tone-later   { opacity: 0.45; }
 
 /* iPhone: one scrolling column, shorter banner (spec §8) */
 @media (max-width: 700px) {
