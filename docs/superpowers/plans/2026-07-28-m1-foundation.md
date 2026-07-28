@@ -846,6 +846,14 @@ banner.createDiv({ cls: 'lime-banner-date', text: L.fmtDayLabel(now) });
 ```
 
 ```dataviewjs
+// Same idempotent loader as the first block. Dataview does not guarantee that a
+// previous block ran, or succeeded — without this, a failure up there surfaces
+// down here as "Cannot read properties of undefined" and the whole dashboard
+// vanishes behind an opaque error.
+if (!globalThis.lime) {
+  const src = await app.vault.adapter.read('_scripts/lib.js');
+  new Function(src)();
+}
 const L = globalThis.lime;
 const now = new Date();
 const todayISO = L.fmtISO(now);
@@ -896,16 +904,23 @@ function openNote(path) {
       text.addEventListener('click', () => openNote(t.path));
       cb.addEventListener('click', async (e) => {
         e.stopPropagation();
-        // Target the exact line; never blind-replace the first "- [ ]" (spec §8).
+        // The browser has already flipped the box by the time we get here. If we
+        // end up not writing, we must flip it back — otherwise the dashboard shows
+        // a ticked task that is still open in the file, and nothing re-renders to
+        // correct it (Dataview only refreshes on a real file-change event).
         const file = app.vault.getAbstractFileByPath(t.path);
-        if (!file) return;
+        if (!file) { cb.checked = false; return; }
+        let rewrote = false;
+        // Target the exact line; never blind-replace the first "- [ ]" (spec §8).
         await app.vault.process(file, (data) => {
           const lines = data.split('\n');
           if (lines[t.line] && lines[t.line].includes('- [ ]')) {
             lines[t.line] = lines[t.line].replace('- [ ]', '- [x]');
+            rewrote = true;
           }
           return lines.join('\n');
         });
+        if (!rewrote) cb.checked = false;
       });
     }
   }
@@ -915,6 +930,7 @@ function openNote(path) {
 {
   const recent = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
+    .where((p) => !p.file.path.startsWith('09-Archive/'))
     .where((p) => p.file.name !== 'Home')
     .sort((p) => p.file.mtime, 'desc')
     .slice(0, 8)
