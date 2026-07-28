@@ -778,7 +778,9 @@ console.log('braces balanced:', open);
 "
 ```
 
-Expected: `braces balanced: 17`
+Expected: `braces balanced: 20`
+
+(16 top-level rules, plus the `@media` block itself and its 3 nested rules.)
 
 - [ ] **Step 4: Commit**
 
