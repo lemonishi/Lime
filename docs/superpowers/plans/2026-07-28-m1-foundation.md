@@ -44,6 +44,8 @@ Likewise, **M1 installs only Dataview and Tasks.** Templater and QuickAdd are pi
 | `_scripts/lib.js` | Pure dashboard helpers on `globalThis.lime`. Loaded by `Home.md` via vault adapter. **No DOM, no Obsidian API, no Node API.** |
 | `_assets/home-banner.jpg` | Header image. Already committed. |
 | `.obsidian/snippets/lime.css` | Three-column grid, banner, panel/row styling, mobile collapse. |
+| `.obsidian/app.json` | Core app config: turns off `readableLineLength` (dense layout A needs the full width) and sets `userIgnoreFilters: ["docs/"]` (keeps project meta-docs out of search/switcher/Recent). |
+| `.obsidian/plugins/dataview/data.json` | Dataview's own settings. Ships with `enableDataviewJs: true` committed — Dataview defaults this to `false`, which would render every `dataviewjs` block as a disabled-queries message. |
 | `00-Home/Home.md` | The dashboard. Thin — loads `lib.js`, then one `dataviewjs` block per panel. |
 | `00-Home/Inbox.md` | Capture landing pad. Empty in M1; fed in M3. |
 | `_templates/daily.md` | Daily note template, core `{{date}}` substitution (no Templater dependency). |
@@ -471,6 +473,7 @@ git commit -m "feat: pinned plugin installer with minAppVersion gate"
   - `relativeAge(ms: number, nowMs: number) => string` — `"2h"`, `"3d"`, `"just now"`
   - `dueStatus(dueISO: string|null, todayISO: string) => { label: string, tone: 'overdue'|'today'|'soon'|'later'|'none' }`
   - `compareTasks(a, b) => number` — sorts task-like `{ dueISO }` objects: overdue first (most overdue first), then today, then soonest, undated last.
+  - `parseISO(iso: string) => Date` and `daysBetween(fromISO: string, toISO: string) => number` — internal helpers used by `dueStatus`, exported on `globalThis.lime` alongside the rest so any future caller (or test) can reach them directly instead of reimplementing date math.
   - Task 6 calls all of these from `Home.md`.
 
 - [ ] **Step 1: Write the failing test**
@@ -640,10 +643,11 @@ git commit -m "feat: pure dashboard date and task-sorting helpers"
 **Files:**
 - Create: `.obsidian/snippets/lime.css`
 - Modify: `.obsidian/appearance.json`
+- Create: `.obsidian/app.json` (turns off `readableLineLength`; also carries Task 6's `userIgnoreFilters`, see below)
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces the class names Task 6's widgets emit: `.lime-grid`, `.lime-col`, `.lime-banner`, `.lime-banner-date`, `.lime-panel`, `.lime-panel h5`, `.lime-row`, `.lime-row .lime-text`, `.lime-row .lime-meta`, and tone modifiers `.lime-tone-overdue`, `.lime-tone-today`, `.lime-tone-soon`, `.lime-tone-later`.
+- Produces the class names Task 6's widgets emit: `.lime-grid`, `.lime-col`, `.lime-banner`, `.lime-banner-date`, `.lime-panel`, `.lime-panel h5`, `.lime-row`, `.lime-row .lime-text`, `.lime-row .lime-meta`, and tone modifiers `.lime-tone-overdue`, `.lime-tone-today`, `.lime-tone-soon`, `.lime-tone-later`. Also styles `.lime-home` — the `cssclasses` value `Home.md` declares (Task 6) — so its content sizer ignores Obsidian's readable-line-length container. Without both halves (this CSS rule *and* `readableLineLength: false` below), layout A's three columns render inside a ~700px column on desktop and nearly every row ellipsises.
 
 **Every selector in this file is `.lime-`-prefixed.** Obsidian applies CSS snippets globally across the app, so an unprefixed generic selector like `.tone-today` could restyle elements belonging to another snippet or theme. The `lime-tone-` prefix is deliberate namespacing, not verbosity.
 
@@ -749,6 +753,11 @@ Create `.obsidian/snippets/lime.css`. This replaces the `obsidian-columns` plugi
 .lime-tone-soon    { opacity: 0.65; }
 .lime-tone-later   { opacity: 0.45; }
 
+/* Layout A is dense by design (spec §8). Obsidian's readable-line-length would
+   squeeze the three columns into a ~700px column and ellipsise almost every row. */
+.lime-home .markdown-preview-sizer,
+.lime-home .cm-sizer { max-width: none; }
+
 /* iPhone: one scrolling column, shorter banner (spec §8) */
 @media (max-width: 700px) {
   .lime-grid { grid-template-columns: 1fr; }
@@ -767,6 +776,22 @@ Create `.obsidian/appearance.json`:
 }
 ```
 
+- [ ] **Step 2b: Turn off readable-line-length and ignore `docs/`**
+
+Create `.obsidian/app.json`. `readableLineLength: false` is the other half of the
+`.lime-home` rule above — CSS alone caps the sizer, but Obsidian's own reading-width
+setting is what decides whether that cap ever gets exercised. `userIgnoreFilters`
+excludes the project's own meta-docs (`docs/`) from search and the quick switcher —
+paired with the `docs/` exclusion Task 6 adds to the Dataview queries, so the same
+folder is invisible everywhere a note picker could surface it.
+
+```json
+{
+  "readableLineLength": false,
+  "userIgnoreFilters": ["docs/"]
+}
+```
+
 - [ ] **Step 3: Verify the file is valid CSS**
 
 Run:
@@ -780,14 +805,15 @@ console.log('braces balanced:', open);
 "
 ```
 
-Expected: `braces balanced: 20`
+Expected: `braces balanced: 21`
 
-(16 top-level rules, plus the `@media` block itself and its 3 nested rules.)
+(17 top-level rules — the 16 original plus `.lime-home`'s grouped selector — plus
+the `@media` block itself and its 3 nested rules.)
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add .obsidian/snippets/lime.css .obsidian/appearance.json
+git add .obsidian/snippets/lime.css .obsidian/appearance.json .obsidian/app.json
 git commit -m "feat: dashboard stylesheet with CSS-grid columns and banner"
 ```
 
@@ -799,8 +825,8 @@ git commit -m "feat: dashboard stylesheet with CSS-grid columns and banner"
 - Create: `00-Home/Home.md`, `00-Home/Inbox.md`
 
 **Interfaces:**
-- Consumes: `globalThis.lime` from Task 4; the CSS classes from Task 5 (**tone modifiers are `lime-tone-*`, prefixed**); the `dataview` and `obsidian-tasks-plugin` installs from Task 3.
-- Produces: the dashboard. M2 will insert an events panel as the first child of the middle column.
+- Consumes: `globalThis.lime` from Task 4; the CSS classes from Task 5 (**tone modifiers are `lime-tone-*`, prefixed**, and the `.lime-home` rule that neutralises readable-line-length — `cssclasses: [lime-home]` below is the other half of that contract, so the two files must not drift apart); the `dataview` and `obsidian-tasks-plugin` installs from Task 3.
+- Produces: the dashboard. M2 will insert an events panel as the first child of the middle column. Both queries exclude `_templates/`, `09-Archive/`, and `docs/` (project meta-docs, not vault content) — `docs/` exclusion here is the content-query half of Task 5's `userIgnoreFilters`, which handles search/switcher.
 
 - [ ] **Step 1: Create the Inbox**
 
@@ -880,6 +906,7 @@ function openNote(path) {
   const tasks = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
     .where((p) => !p.file.path.startsWith('09-Archive/'))
+    .where((p) => !p.file.path.startsWith('docs/'))
     .file.tasks
     .where((t) => !t.completed)
     .array()
@@ -912,14 +939,23 @@ function openNote(path) {
         if (!file) { cb.checked = false; return; }
         let rewrote = false;
         // Target the exact line; never blind-replace the first "- [ ]" (spec §8).
-        await app.vault.process(file, (data) => {
-          const lines = data.split('\n');
-          if (lines[t.line] && lines[t.line].includes('- [ ]')) {
-            lines[t.line] = lines[t.line].replace('- [ ]', '- [x]');
-            rewrote = true;
-          }
-          return lines.join('\n');
-        });
+        // '*' and '+' are valid markdown bullets too, and Dataview parses them as tasks.
+        try {
+          await app.vault.process(file, (data) => {
+            const lines = data.split('\n');
+            if (lines[t.line] && /^\s*[-*+] \[ \]/.test(lines[t.line])) {
+              lines[t.line] = lines[t.line].replace(/^(\s*[-*+] )\[ \]/, '$1[x]');
+              rewrote = true;
+            }
+            return lines.join('\n');
+          });
+        } catch (err) {
+          // A failed write must not leave a ticked box over an untouched source
+          // line — every failure path (missing file, throw, no-op) reverts the UI.
+          console.error('lime: failed to write checkbox toggle', err);
+          cb.checked = false;
+          return;
+        }
         if (!rewrote) cb.checked = false;
       });
     }
@@ -931,7 +967,8 @@ function openNote(path) {
   const recent = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
     .where((p) => !p.file.path.startsWith('09-Archive/'))
-    .where((p) => p.file.name !== 'Home')
+    .where((p) => !p.file.path.startsWith('docs/'))
+    .where((p) => p.file.path !== '00-Home/Home.md') // path, not name — a future 03-Work/Home.md must not also match
     .sort((p) => p.file.mtime, 'desc')
     .slice(0, 8)
     .array();
@@ -1084,10 +1121,12 @@ git commit -m "feat: daily notes with template and core plugin config"
 
 **Files:**
 - Create: `SETUP.md`
+- Modify: `.gitignore` (negate the general plugin-`data.json` ignore for Dataview specifically)
+- Create: `.obsidian/plugins/dataview/data.json`
 
 **Interfaces:**
 - Consumes: everything above.
-- Produces: the human-only steps and the M1 acceptance checklist that gates the M2 checkpoint.
+- Produces: the human-only steps and the M1 acceptance checklist that gates the M2 checkpoint. Also produces the one committed plugin setting M1 depends on (`enableDataviewJs: true`) — without it the dashboard is two error strings, not a dashboard.
 
 - [ ] **Step 1: Write SETUP.md**
 
@@ -1119,12 +1158,24 @@ Plugin files are read at startup. After restarting, confirm under
 - Dataview `0.5.68`
 - Tasks `8.3.0`
 
-## 4. Confirm the CSS snippet is on
+## 4. Confirm Dataview's JavaScript queries are on
+
+**Settings → Dataview → JavaScript Queries** — this must be enabled.
+
+The dashboard is built from `dataviewjs` blocks, and Dataview ships with them
+**off** by default. If this is off you will see "Dataview JS queries are disabled"
+where the banner and panels should be, with nothing in the console to explain it.
+
+The repo ships this setting turned on, so it should already be correct — but
+Obsidian rewrites plugin settings files as you change other options, so check it
+here and again if the dashboard ever goes blank.
+
+## 5. Confirm the CSS snippet is on
 
 **Settings → Appearance → CSS snippets** — `lime` should be listed and toggled on.
 If it is not, hit the reload icon.
 
-## 5. Set up Obsidian Sync
+## 6. Set up Obsidian Sync
 
 **Settings → Sync.** Sign in, create a remote vault, connect. Then repeat on the
 Windows PC and the iPhone.
@@ -1132,18 +1183,34 @@ Windows PC and the iPhone.
 **Exclude these from sync** (they are per-device and cause conflicts):
 `.obsidian/workspace.json`, `.obsidian/workspace-mobile.json`
 
-## 6. Pick a dark theme
+## 7. Pick a dark theme
 
 The banner image is dark and heavily saturated (spec §8). It sits naturally on a
 dark theme and will read as a heavy dark block on a light one.
+
+## A note on the Tasks plugin
+
+Tasks runs on its **defaults** in M1 — nothing here configures it. What it gives
+us is the `📅 YYYY-MM-DD` due-date syntax you type into a checkbox; `_scripts/lib.js`
+and `Home.md` parse that emoji themselves via Dataview's task index. There is
+nothing else to set up, so do not go looking for a Tasks settings step that isn't
+there — it's not an oversight.
 
 ---
 
 ## Do not do this
 
 **Never accept Obsidian's offer to update Dataview or Tasks.** Their versions are
-pinned in `scripts/plugins.json` for reasons recorded in spec §7. Newer Templater
-and QuickAdd builds require Obsidian 1.13.0, which you cannot install.
+pinned in `scripts/plugins.json` for reasons recorded in spec §7:
+Dataview because it has been unmaintained since April 2025 and a version bump could
+change dashboard behaviour with no upstream fix available; Tasks for reproducibility
+across the three devices. Do not blind-update either.
+
+**Separately:** Templater and QuickAdd are not installed in M1 at all — they arrive
+in M3. When they do, their own pins (2.20.6 and 2.12.3) will carry the *same*
+constraint as Dataview and Tasks do here, because newer builds of both require
+Obsidian 1.13.0, which this Mac cannot run. That is a fact about M3's plugins, not
+about the two pins above.
 
 To check nothing has drifted:
 
@@ -1174,9 +1241,11 @@ Work through this before we plan M2.
 - [ ] Giving a task yesterday's date shows it as `1d overdue`, coloured, above today's tasks
 - [ ] Ticking a task's checkbox on the dashboard changes that exact line in the source note
 - [ ] Ticking it removes it from the panel on next render
+- [ ] Ticking a task's checkbox that has since moved or been edited makes the box spring back rather than staying ticked
 - [ ] With no due tasks at all, the **Due & overdue** panel is absent — not an empty box
 - [ ] **Recent** lists notes you have just edited, newest first
 - [ ] Clicking any row opens the right note
+- [ ] Opening `_templates/daily.md` shows no frontmatter parse error in Obsidian's Properties view
 - [ ] On iPhone: the vault syncs, the dashboard renders as one column, the banner is short
 - [ ] `npm test` passes
 
@@ -1187,6 +1256,30 @@ spending (M5), needs-attention (M6). The right-hand column is empty on purpose �
 M4 and M5 fill it.
 ````
 
+- [ ] **Step 1b: Ship Dataview's JS-queries setting turned on**
+
+Dataview 0.5.68 defaults `enableDataviewJs` to `false` — every `dataviewjs` block
+in `Home.md` would render "Dataview JS queries are disabled" instead of dashboard
+content, and SETUP.md's §4 above only *checks* the setting, it doesn't create it.
+The setting lives in the plugin's own `data.json`, which the general
+`.obsidian/plugins/*/data.json` gitignore rule excludes — so it has to be
+un-ignored specifically for this one plugin.
+
+In `.gitignore`, add a negation immediately after the existing rule:
+
+```
+.obsidian/plugins/*/data.json
+!.obsidian/plugins/dataview/data.json
+```
+
+Create `.obsidian/plugins/dataview/data.json`:
+
+```json
+{
+  "enableDataviewJs": true
+}
+```
+
 - [ ] **Step 2: Run the full suite one final time**
 
 Run: `npm test`
@@ -1195,7 +1288,7 @@ Expected: PASS — 19 tests across 3 files
 - [ ] **Step 3: Commit**
 
 ```bash
-git add SETUP.md
+git add SETUP.md .gitignore .obsidian/plugins/dataview/data.json
 git commit -m "docs: setup guide and M1 acceptance checklist"
 ```
 

@@ -57,6 +57,7 @@ function openNote(path) {
   const tasks = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
     .where((p) => !p.file.path.startsWith('09-Archive/'))
+    .where((p) => !p.file.path.startsWith('docs/'))
     .file.tasks
     .where((t) => !t.completed)
     .array()
@@ -89,14 +90,21 @@ function openNote(path) {
         if (!file) { cb.checked = false; return; }
         let rewrote = false;
         // Target the exact line; never blind-replace the first "- [ ]" (spec §8).
-        await app.vault.process(file, (data) => {
-          const lines = data.split('\n');
-          if (lines[t.line] && lines[t.line].includes('- [ ]')) {
-            lines[t.line] = lines[t.line].replace('- [ ]', '- [x]');
-            rewrote = true;
-          }
-          return lines.join('\n');
-        });
+        // '*' and '+' are valid markdown bullets too, and Dataview parses them as tasks.
+        try {
+          await app.vault.process(file, (data) => {
+            const lines = data.split('\n');
+            if (lines[t.line] && /^\s*[-*+] \[ \]/.test(lines[t.line])) {
+              lines[t.line] = lines[t.line].replace(/^(\s*[-*+] )\[ \]/, '$1[x]');
+              rewrote = true;
+            }
+            return lines.join('\n');
+          });
+        } catch (err) {
+          console.error('lime: failed to write checkbox toggle', err);
+          cb.checked = false;
+          return;
+        }
         if (!rewrote) cb.checked = false;
       });
     }
@@ -108,7 +116,8 @@ function openNote(path) {
   const recent = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
     .where((p) => !p.file.path.startsWith('09-Archive/'))
-    .where((p) => p.file.name !== 'Home')
+    .where((p) => !p.file.path.startsWith('docs/'))
+    .where((p) => p.file.path !== '00-Home/Home.md')
     .sort((p) => p.file.mtime, 'desc')
     .slice(0, 8)
     .array();
