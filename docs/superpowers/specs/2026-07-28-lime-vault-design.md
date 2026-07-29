@@ -394,17 +394,20 @@ it, then the next milestone is planned against what actually annoyed them.
 M2 is deliberately early and small: seeing a real calendar in the dashboard on day two is the
 highest motivation-per-hour work in the plan.
 
-> **M2 caveat — ICS feeds lag, and the user must be told before M2 is called done.**
-> Google refreshes its secret-address ICS feeds lazily, often **8–24 hours behind**. An event
-> added on the phone this morning may not appear in Obsidian until tomorrow. This is a Google-
-> side limitation, not a bug in the plugin or our code, and it cannot be fixed by polling more
-> often.
+> **M2 caveat — ICS feed lag is real but UNMEASURED. Do not treat any figure as fact.**
+> Google refreshes secret-address ICS feeds lazily rather than on write, so an event added on
+> the phone may not reach Obsidian immediately. This is a Google-side limitation, not a bug in
+> the plugin or our code, and it cannot be fixed by polling more often.
 >
-> It is acceptable for "what does my week look like" and unacceptable for "what is my next
-> meeting". If the lag turns out to bother the user in daily use, the fix is OAuth-authenticated
-> reads (near real-time — a Google Cloud project and credentials, roughly an hour of setup),
-> which the `google-calendar` bonus plugin already does. Do not silently absorb the lag; surface
-> it at the M2 checkpoint and let the user decide.
+> **An earlier version of this spec asserted "8–24 hours". That was never measured and should
+> not be relied on** — it is widely repeated but dated, and reports range from minutes to a day.
+> M2 therefore *measures* the lag on the owner's own account rather than designing around a
+> guess; see `2026-07-29-m2-calendar-design.md` §4.
+>
+> If the measurement shows hours, the fix is OAuth-authenticated reads (near real-time — a
+> Google Cloud project and credentials, roughly an hour of setup), which the `google-calendar`
+> bonus plugin already does, and that becomes M2.5. If it shows minutes, no further work is
+> needed. Either way, surface the result at the M2 checkpoint rather than silently absorbing it.
 
 ## 11. Deferred
 
