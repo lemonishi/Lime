@@ -22,6 +22,7 @@ Plugin files are read at startup. After restarting, confirm under
 
 - Dataview `0.5.68`
 - Tasks `8.3.0`
+- Open Tab Settings `2.3.1`
 
 ## 4. Confirm Dataview's JavaScript queries are on
 
@@ -52,6 +53,16 @@ Windows PC and the iPhone.
 
 The banner image is dark and heavily saturated (spec §8). It sits naturally on a
 dark theme and will read as a heavy dark block on a light one.
+
+## A note on Open Tab Settings
+
+Installed so the quick switcher (`Cmd+O`), links, and the file explorer **focus a
+tab that's already open** instead of opening the same note twice.
+
+Its defaults ship `openInNewTab: true`, which would make *every* click spawn a new
+tab. `.obsidian/plugins/open-tab-settings/data.json` turns that off and keeps only
+the de-duplication — the reason it was installed. Flip `openInNewTab` back on if
+you want VSCode-style always-new-tab behaviour.
 
 ## A note on the Tasks plugin
 

@@ -65,6 +65,9 @@
 # enableDataviewJs: true, without which every dashboard block renders an error.
 .obsidian/plugins/*/data.json
 !.obsidian/plugins/dataview/data.json
+# Open Tab Settings: deduplicateTabs on (the reason we installed it), but
+# openInNewTab off — its default is on, which would make every click spawn a tab.
+!.obsidian/plugins/open-tab-settings/data.json
 
 # Secrets (Google OAuth etc., if phase B adds them)
 scripts/secrets/*

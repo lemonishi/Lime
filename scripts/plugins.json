@@ -12,6 +12,12 @@
       "repo": "obsidian-tasks-group/obsidian-tasks",
       "pin": "8.3.0",
       "why": "due-date semantics for inline checkboxes"
+    },
+    {
+      "id": "open-tab-settings",
+      "repo": "jesse-r-s-hines/obsidian-open-tab-settings",
+      "pin": "2.3.1",
+      "why": "quick switcher and links focus an already-open tab instead of duplicating it; actively maintained, mobile-capable"
     }
   ]
 }
