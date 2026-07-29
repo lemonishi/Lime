@@ -97,23 +97,23 @@ Then restart Obsidian.
 
 Work through this before we plan M2.
 
-- [ ] Obsidian opens the lime vault without errors in the developer console
-- [ ] `00-Home/Home.md` renders panels, **not** an "Evaluation Error: SyntaxError" message
-- [ ] `00-Home/Home.md` shows the banner image, cropped to a strip, with today's date over it
-- [ ] The date reads correctly — check it again after 9pm, which is when a UTC bug would show
-- [ ] Today's daily note can be created from the command palette (**Open today's daily note**)
-- [ ] The new daily note has `type: daily` and today's date in its frontmatter
-- [ ] Typing `- [ ] test task 📅 <today>` into the daily note makes it appear in **Due & overdue**
-- [ ] Giving a task yesterday's date shows it as `1d overdue`, coloured, above today's tasks
-- [ ] Ticking a task's checkbox on the dashboard changes that exact line in the source note
-- [ ] Ticking it removes it from the panel on next render
+- [x] Obsidian opens the lime vault without errors in the developer console ✅ 2026-07-29
+- [x] `00-Home/Home.md` renders panels, **not** an "Evaluation Error: SyntaxError" message ✅ 2026-07-29
+- [x] `00-Home/Home.md` shows the banner image, cropped to a strip, with today's date over it ✅ 2026-07-29
+- [x] The date reads correctly — check it again after 9pm, which is when a UTC bug would show ✅ 2026-07-29
+- [x] Today's daily note can be created from the command palette (**Open today's daily note**) ✅ 2026-07-29
+- [x] The new daily note has `type: daily` and today's date in its frontmatter ✅ 2026-07-29
+- [x] Typing `- [ ] test task 📅 <today>` into the daily note makes it appear in **Due & overdue** ✅ 2026-07-29
+- [x] Giving a task yesterday's date shows it as `1d overdue`, coloured, above today's tasks ✅ 2026-07-29
+- [x] Ticking a task's checkbox on the dashboard changes that exact line in the source note ✅ 2026-07-29
+- [x] Ticking it removes it from the panel on next render ✅ 2026-07-29
 - [ ] Ticking a task's checkbox that has since moved or been edited makes the box spring back rather than staying ticked
-- [ ] With no due tasks at all, the **Due & overdue** panel is absent — not an empty box
-- [ ] **Recent** lists notes you have just edited, newest first
-- [ ] Clicking any row opens the right note
-- [ ] Opening `_templates/daily.md` shows no frontmatter parse error in Obsidian's Properties view
+- [x] With no due tasks at all, the **Due & overdue** panel is absent — not an empty box ✅ 2026-07-29
+- [x] **Recent** lists notes you have just edited, newest first ✅ 2026-07-29
+- [x] Clicking any row opens the right note ✅ 2026-07-29
+- [x] Opening `_templates/daily.md` shows no frontmatter parse error in Obsidian's Properties view ✅ 2026-07-29
 - [ ] On iPhone: the vault syncs, the dashboard renders as one column, the banner is short
-- [ ] `npm test` passes
+- [x] `npm test` passes ✅ 2026-07-29
 
 ## What is deliberately missing in M1
 

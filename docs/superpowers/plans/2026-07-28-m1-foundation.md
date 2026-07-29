@@ -899,6 +899,15 @@ function panel(col, title) {
 }
 
 function openNote(path) {
+  // If the note is already open somewhere, focus that tab rather than opening a
+  // second copy of it. openLinkText alone does not check, so clicking a row for
+  // an already-open note used to leave you with duplicate tabs of the same file.
+  const open = app.workspace.getLeavesOfType('markdown')
+    .find((leaf) => leaf.view && leaf.view.file && leaf.view.file.path === path);
+  if (open) {
+    app.workspace.setActiveLeaf(open, { focus: true });
+    return;
+  }
   // never build an obsidian:// URL — that would hardcode the vault name (spec §8)
   app.workspace.openLinkText(path, '', false);
 }
