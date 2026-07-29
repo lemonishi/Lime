@@ -50,6 +50,23 @@ function dueStatus(dueISO, todayISO) {
   return { label: `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`, tone: 'later' };
 }
 
+// Strip the Tasks plugin's date markers ("… 📅 2026-07-29") for display.
+//
+// The /u flag is load-bearing. 📅 is U+1F4C5, a surrogate pair; without /u a
+// character class matches a single code UNIT, so the pattern consumed only the
+// low half plus the date and orphaned the high half — an unpaired surrogate that
+// renders as a tofu box at the end of every task.
+//
+// Matching \p{Extended_Pictographic} rather than a hand-listed emoji set means a
+// marker Tasks adds later still gets stripped. It only fires when the pictograph
+// is followed by an ISO date, so emoji the user typed in the task text survive,
+// and so do priority markers (⏫ etc.) which carry meaning and take no date.
+function cleanTaskText(text) {
+  return String(text)
+    .replace(/\s*\p{Extended_Pictographic}️?\s*\d{4}-\d{2}-\d{2}/gu, '')
+    .trim();
+}
+
 // Undated tasks sink to the bottom; everything else is chronological, so the
 // most-overdue item is always the first thing read.
 function compareTasks(a, b) {
@@ -59,4 +76,4 @@ function compareTasks(a, b) {
   return a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : 0;
 }
 
-globalThis.lime = { fmtISO, fmtDayLabel, relativeAge, dueStatus, compareTasks, parseISO, daysBetween };
+globalThis.lime = { fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks, parseISO, daysBetween };

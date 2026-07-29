@@ -49,6 +49,47 @@ test('dueStatus handles undated tasks', () => {
   assert.deepEqual(lime.dueStatus(null, '2026-07-28'), { label: '', tone: 'none' });
 });
 
+test('cleanTaskText strips the due-date marker without orphaning a surrogate', () => {
+  // The bug this guards: 📅 is U+1F4C5, a surrogate pair. In a character class
+  // WITHOUT the /u flag, the regex matches a single code unit — so it ate the low
+  // half plus the date and left the high half behind, which renders as a tofu box
+  // at the end of every task on the dashboard.
+  const out = lime.cleanTaskText('Email recruiter back 📅 2026-07-29');
+  assert.equal(out, 'Email recruiter back');
+  assert.equal(/[\uD800-\uDFFF]/.test(out), false, 'left an unpaired surrogate behind');
+});
+
+test('cleanTaskText strips every Tasks date marker, including cancelled', () => {
+  for (const emoji of ['📅', '⏳', '🛫', '➕', '✅', '❌']) {
+    assert.equal(lime.cleanTaskText(`do the thing ${emoji} 2026-07-29`), 'do the thing');
+  }
+});
+
+test('cleanTaskText strips several markers on one task', () => {
+  assert.equal(
+    lime.cleanTaskText('finish OA ➕ 2026-07-18 📅 2026-07-31'),
+    'finish OA'
+  );
+});
+
+test('cleanTaskText keeps priority markers, which carry meaning', () => {
+  // Priority emoji are not followed by a date, so they must survive.
+  assert.equal(lime.cleanTaskText('urgent thing ⏫ 📅 2026-07-29'), 'urgent thing ⏫');
+});
+
+test('cleanTaskText keeps emoji the user wrote in the task itself', () => {
+  assert.equal(lime.cleanTaskText('ship 🚀 the release 📅 2026-07-29'), 'ship 🚀 the release');
+  assert.equal(lime.cleanTaskText('ship 🚀 the release'), 'ship 🚀 the release');
+});
+
+test('cleanTaskText tolerates a variation selector after the marker', () => {
+  assert.equal(lime.cleanTaskText('thing ✅️ 2026-07-29'), 'thing');
+});
+
+test('cleanTaskText leaves an unmarked task alone', () => {
+  assert.equal(lime.cleanTaskText('renew student pass'), 'renew student pass');
+});
+
 test('compareTasks sorts most-overdue first, undated last', () => {
   const tasks = [
     { id: 'undated', dueISO: null },

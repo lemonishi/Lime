@@ -474,6 +474,7 @@ git commit -m "feat: pinned plugin installer with minAppVersion gate"
   - `fmtISO(date: Date) => string` — `"2026-07-28"`
   - `relativeAge(ms: number, nowMs: number) => string` — `"2h"`, `"3d"`, `"just now"`
   - `dueStatus(dueISO: string|null, todayISO: string) => { label: string, tone: 'overdue'|'today'|'soon'|'later'|'none' }`
+  - `cleanTaskText(text: string) => string` — strips Tasks' date markers for display. **The `/u` flag is load-bearing:** `📅` is a surrogate pair, and without `/u` a character class matches one code *unit*, orphaning the high half as a tofu box. Matches `\p{Extended_Pictographic}` followed by an ISO date, so future markers are covered and emoji the user typed survive.
   - `compareTasks(a, b) => number` — sorts task-like `{ dueISO }` objects: overdue first (most overdue first), then today, then soonest, undated last.
   - `parseISO(iso: string) => Date` and `daysBetween(fromISO: string, toISO: string) => number` — internal helpers used by `dueStatus`, exported on `globalThis.lime` alongside the rest so any future caller (or test) can reach them directly instead of reimplementing date math.
   - Task 6 calls all of these from `Home.md`.
@@ -923,7 +924,7 @@ function openNote(path) {
     .where((t) => !t.completed)
     .array()
     .map((t) => ({
-      text: t.text.replace(/\s*[📅⏳🛫➕✅]\s*\d{4}-\d{2}-\d{2}/g, '').trim(),
+      text: L.cleanTaskText(t.text),
       dueISO: t.due ? L.fmtISO(new Date(t.due.ts)) : null,
       path: t.path,
       line: t.line,

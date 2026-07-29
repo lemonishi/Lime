@@ -72,7 +72,7 @@ function openNote(path) {
     .where((t) => !t.completed)
     .array()
     .map((t) => ({
-      text: t.text.replace(/\s*[📅⏳🛫➕✅]\s*\d{4}-\d{2}-\d{2}/g, '').trim(),
+      text: L.cleanTaskText(t.text),
       dueISO: t.due ? L.fmtISO(new Date(t.due.ts)) : null,
       path: t.path,
       line: t.line,
