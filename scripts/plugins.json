@@ -18,6 +18,12 @@
       "repo": "jesse-r-s-hines/obsidian-open-tab-settings",
       "pin": "2.3.1",
       "why": "quick switcher and links focus an already-open tab instead of duplicating it; actively maintained, mobile-capable"
+    },
+    {
+      "id": "ics",
+      "repo": "open-horizon-labs/obsidian-ics",
+      "pin": "1.14.3",
+      "why": "reads the Google Calendar secret ICS feed; actively maintained, mobile-capable"
     }
   ]
 }
