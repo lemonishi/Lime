@@ -79,7 +79,14 @@ function cleanTaskText(text) {
 // verbatim. Timed events are parsed, because their local day is what matters.
 function eventStartISO(event) {
   if (event.allDay) return String(event.startDateTime).slice(0, 10);
-  return fmtISO(new Date(event.startDateTime));
+  const d = new Date(event.startDateTime);
+  // An unparseable start used to fall through to fmtISO() and produce the
+  // literal string "NaN-NaN-NaN", which splitEvents then happily bucketed —
+  // this is the mechanism that turned a version-mismatch (missing
+  // startDateTime) into an invisible failure instead of a loud one. Returning
+  // null lets callers skip the event instead of misbucketing it.
+  if (Number.isNaN(d.getTime())) return null;
+  return fmtISO(d);
 }
 
 // An all-day event's true final day.
@@ -132,14 +139,17 @@ function splitEvents(events, todayISO, tomorrowISO, nowMs) {
   const byStart = (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime);
 
   for (const e of events) {
+    const day = eventStartISO(e);
+    // Skip rather than silently bucket: an unparseable start used to become
+    // "NaN-NaN-NaN", which never equalled todayISO/tomorrowISO but WOULD have
+    // satisfied a broken range check — skipping outright is the safe failure.
+    if (day === null) continue;
     if (e.allDay) {
-      const from = eventStartISO(e);
       const to = allDayLastDayISO(e);
-      if (todayISO >= from && todayISO <= to) out.today.allDay.push(e);
-      if (tomorrowISO >= from && tomorrowISO <= to) out.tomorrow.allDay.push(e);
+      if (todayISO >= day && todayISO <= to) out.today.allDay.push(e);
+      if (tomorrowISO >= day && tomorrowISO <= to) out.tomorrow.allDay.push(e);
       continue;
     }
-    const day = eventStartISO(e);
     if (day === todayISO) {
       const ended = new Date(e.endDateTime).getTime() <= nowMs;
       (ended ? out.today.past : out.today.upcoming).push(e);

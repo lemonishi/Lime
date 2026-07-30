@@ -121,6 +121,25 @@ test('eventStartISO uses local time for timed events', () => {
     lime.eventStartISO({ allDay: false, startDateTime: local.toISOString() }),
     '2026-07-30'
   );
+  // 14:00 local cannot discriminate a UTC-getter regression across roughly
+  // UTC-9..UTC+9 — shifting by up to 9 hours in either direction still lands
+  // on the same calendar day. 01:00 local does discriminate: in any zone at
+  // UTC+2 or later, reading the UTC date instead of the local date would roll
+  // this back to the previous day.
+  const early = new Date(2026, 6, 30, 1, 0);
+  assert.equal(
+    lime.eventStartISO({ allDay: false, startDateTime: early.toISOString() }),
+    '2026-07-30'
+  );
+});
+
+test('eventStartISO returns null for an unparseable start instead of "NaN-NaN-NaN"', () => {
+  // This is the mechanism that turned a version mismatch (a missing
+  // startDateTime field) into an invisible failure: fmtISO(new Date(garbage))
+  // used to produce the literal string "NaN-NaN-NaN", which callers then
+  // treated as a valid day. Returning null lets splitEvents skip it outright.
+  assert.equal(lime.eventStartISO({ allDay: false, startDateTime: 'not-a-date' }), null);
+  assert.equal(lime.eventStartISO({ allDay: false, startDateTime: undefined }), null);
 });
 
 test('allDayLastDayISO subtracts a day because the plugin end is exclusive', () => {
@@ -272,6 +291,31 @@ test('splitEvents includes a multi-day all-day event that spans today', () => {
   }], T_TODAY, T_TOMORROW, T_NOW);
   assert.deepEqual(out.today.allDay.map((e) => e.summary), ['revision week']);
   assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['revision week']);
+});
+
+test('splitEvents keeps recurring instances independent rather than collapsing them', () => {
+  // The plugin's own source calls this out (spec §10): recurring events arrive
+  // as separate instances that happen to share a summary. splitEvents must not
+  // dedupe or merge on that text — each instance keeps its own day and slot.
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(9, 10, 'standup', 31),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.tomorrow.timed.map((e) => e.summary), ['standup']);
+});
+
+test('splitEvents skips an event whose start does not parse rather than bucketing it', () => {
+  // Closes the C1 failure mode at its source: a bad/missing startDateTime used
+  // to produce "NaN-NaN-NaN", which never matched todayISO/tomorrowISO by
+  // string equality — but skipping outright, rather than relying on that
+  // accident, is the deliberate contract now.
+  const out = lime.splitEvents([
+    { allDay: false, summary: 'broken', startDateTime: 'not-a-date', endDateTime: 'not-a-date' },
+    timed(9, 10, 'standup'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.today.upcoming, []);
 });
 
 test('matchModuleEvents joins an event to a module code in its summary', () => {

@@ -47,3 +47,19 @@ test('no installed plugin requires a newer app than we have', () => {
     );
   }
 });
+
+test('the pinned ICS build exposes every event field the dashboard reads', () => {
+  // _scripts/lib.js reads startDateTime, endDateTime and allDay off each event.
+  // These landed in ICS 1.15.0; the previously pinned 1.14.3 had none of them, and
+  // the whole calendar feature silently rendered nothing because every event parsed
+  // to NaN and was dropped. Unit tests could not catch it — the fixtures encoded the
+  // same wrong assumption. This checks the actual shipped bundle instead.
+  const bundle = readFileSync('.obsidian/plugins/ics/main.js', 'utf8');
+  for (const field of ['startDateTime', 'endDateTime', 'allDay']) {
+    assert.ok(
+      bundle.includes(field),
+      `pinned ICS build does not expose "${field}" — the event helpers depend on it. ` +
+      `1.15.0 is the minimum version that provides it.`
+    );
+  }
+});

@@ -22,8 +22,8 @@
     {
       "id": "ics",
       "repo": "open-horizon-labs/obsidian-ics",
-      "pin": "1.14.3",
-      "why": "reads the Google Calendar secret ICS feed; actively maintained, mobile-capable"
+      "pin": "1.15.0",
+      "why": "reads the Google Calendar secret ICS feed; 1.15.0 is the floor — it introduced startDateTime/endDateTime/allDay, which every event helper depends on"
     }
   ]
 }

@@ -54,7 +54,7 @@ Windows PC and the iPhone.
 The banner image is dark and heavily saturated (spec §8). It sits naturally on a
 dark theme and will read as a heavy dark block on a light one.
 
-## Connect your Google Calendar
+## 8. Connect your Google Calendar
 
 The vault reads your calendar; it never writes to it. Google Calendar stays the
 place you create and edit events.
@@ -65,9 +65,23 @@ place you create and edit events.
 3. Scroll to **Integrate calendar**
 4. Copy **Secret address in iCal format**. Google will warn you not to share it —
    that warning is real, see below
-5. In Obsidian: **Settings → ICS → add a calendar**, give it a name, paste the URL
-6. Run the **ICS: Import events** command once. If it reports nothing, the usual
-   cause is having copied the public address instead of the secret one
+5. In Obsidian: **Settings → ICS Calendar → Add a new calendar**, give it a name,
+   paste the URL
+6. Open **today's daily note**, then run the command **ICS Calendar: Import
+   events**, then **undo** (`Cmd+Z`).
+
+   This command is the only way to confirm the feed parses, but it is built to
+   insert formatted event lines into whichever note has focus — it is not a
+   "test the connection" command, and Obsidian will label it **ICS Calendar:
+   Import events** in the command palette, not "ICS: Import events". Running it
+   against a note that is not a daily note fails with `⚠️ Unable to get valid
+   date from filename. ICS only works with daily notes.` — that error is about
+   the note you ran it in, not your calendar setup. Confirm event lines were
+   inserted, then undo to leave the daily note clean; the undo is deliberate,
+   not a sign anything went wrong.
+
+   If it reports no events at all (rather than the daily-note error above), the
+   usual cause is having copied the public address instead of the secret one.
 
 > **The secret address grants read access to your whole calendar to anyone who
 > has it.** It is stored in `.obsidian/plugins/ics/data.json`, which is gitignored
@@ -76,8 +90,23 @@ place you create and edit events.
 
 ### Naming convention for exam and class events
 
-The **Upcoming dates** panel links calendar events to your module notes by looking
-for the module code in the event title. So name events like:
+The **Upcoming dates** panel joins a calendar event to a module note by matching
+the module code in the event title against a `code:` property in a note under
+`02-Learning/Modules/`. **Both halves are required** — a note with `code:`, and
+events whose titles contain that code. Neither one alone makes the panel appear.
+
+For example, to have `CS3230 Midterm` show up and link to its module, create
+`02-Learning/Modules/CS3230.md` containing:
+
+```markdown
+---
+type: module
+code: CS3230
+semester: 2026-S1
+---
+```
+
+Then name calendar events like:
 
 - `CS3230 Midterm` ✅ — links to `02-Learning/Modules/CS3230.md`
 - `Midterm` ❌ — shows in *Next up* on the day, but never in *Upcoming dates*

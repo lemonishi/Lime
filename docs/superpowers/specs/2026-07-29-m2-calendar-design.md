@@ -166,9 +166,11 @@ console, and returns an empty array — a broken feed is indistinguishable from 
 
 **Mitigation:** if the *entire 21-day window* is empty, that is implausible for a calendar
 holding the owner's whole life. In that case **render the "Next up" panel** — rather than
-hiding it — containing the single line `No events in 21 days — check ICS settings if that
-looks wrong`. It does not claim an error; it flags implausibility. Genuine errors also reach
-the developer console, which the acceptance checklist already covers.
+hiding it — containing the single line `No events in 21 days — either genuinely clear, or the
+feed is failing silently. Check ICS settings and the console.` It does not claim an error; it
+names both possible causes rather than implying the calendar is merely empty, since the ICS
+plugin swallows fetch failures internally and returns `[]` either way. Genuine errors also
+reach the developer console, which the acceptance checklist already covers.
 
 To be unambiguous about which of the two "empty" cases hides and which shows:
 
@@ -182,7 +184,30 @@ To be unambiguous about which of the two "empty" cases hides and which shows:
 
 | | Version | Notes |
 |---|---|---|
-| **ICS Calendar** (`ics`) | **1.14.3** | Released 2026-07-26. `minAppVersion` 1.9.12 ✓ against app 1.12.7. `isDesktopOnly: false`. Installed through `scripts/install-plugins.mjs`, so the version gate and pin-drift test cover it. |
+| **ICS Calendar** (`ics`) | **1.15.0 — floor, do not go lower** | `minAppVersion` 1.12.7 ✓ against app 1.12.7 (exactly the ceiling; no headroom). `isDesktopOnly: false`. Installed through `scripts/install-plugins.mjs`, so the version gate and pin-drift test cover it. |
+
+**Why 1.15.0 and not 1.14.3.** M2 was designed and implemented against the interface read
+from the plugin repo's `master` branch — `startDateTime`, `endDateTime`, `allDay` (full ISO
+8601 with UTC offsets, and a boolean for all-day events), which `_scripts/lib.js` and
+`Home.md` depend on throughout. But the *release* actually pinned at implementation time was
+**1.14.3**, which predates all three fields entirely — verified by grepping the vendored
+bundle. Every event helper (`eventStartISO`, `splitEvents`, `matchModuleEvents`, and the
+render code in `Home.md`) silently produced `"NaN-NaN-NaN"` for every event's date, which
+`splitEvents` then dropped — against a real calendar, **"Next up" rendered nothing at all**,
+indistinguishable from a genuinely free day, because `EVENTS.length > 0` stayed false and the
+implausibility guard (§7) never fired. This was caught only at whole-branch review; no
+per-task review or unit test caught it, because the test fixtures encoded the same wrong
+assumption about which fields existed.
+
+The four fields (plus `endUtime`) landed in **1.15.0**, released 2026-07-29, per its release
+notes. 1.15.0 also defaults "show ongoing" to on for newly added calendars, which is what the
+multi-day all-day handling in `splitEvents`/`allDayLastDayISO` needs.
+
+**1.15.0 is therefore the floor.** Its `minAppVersion` (1.12.7) exactly equals the owner's
+app version — there is no room to fall further behind on the app side while staying on a
+build that provides these fields. `tests/vault.test.mjs` asserts the pinned bundle contains
+all three field names as a permanent regression guard; a future accidental downgrade of the
+pin would fail loudly there rather than rendering an empty dashboard.
 
 `google-calendar` (YukiGasai) is **not** installed in M2. The parent spec called it a bonus;
 it only becomes relevant if the §4 measurement forces M2.5, and installing it now would be
