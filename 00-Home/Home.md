@@ -38,13 +38,21 @@ const todayISO = L.fmtISO(now);
 const grid = dv.container.createDiv({ cls: 'lime-grid' });
 const colLeft = grid.createDiv({ cls: 'lime-col' });
 const colMid = grid.createDiv({ cls: 'lime-col' });
-// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
+// colRight stays empty until M4/M5 bring learning progress and spending.
 const colRight = grid.createDiv({ cls: 'lime-col' });
 
 function panel(col, title) {
   const p = col.createDiv({ cls: 'lime-panel' });
   p.createEl('h5', { text: title });
   return p;
+}
+
+// Same panel, but into a placeholder element created earlier — used by panels
+// that render only after the calendar await (below) but still need to keep
+// their DOM position higher up the column. Due & overdue and Recent render
+// synchronously before the await and keep using panel() directly.
+function panelInto(slot, title) {
+  return panel(slot, title);
 }
 
 function openNote(path) {
@@ -61,8 +69,60 @@ function openNote(path) {
   app.workspace.openLinkText(path, '', false);
 }
 
+// ── calendar fetch ───────────────────────────────────────────────────────
+// The ICS plugin re-downloads and re-parses the entire feed on every
+// getEvents() call, and Dataview re-renders on any vault change — so an
+// uncached fetch would cost a calendar download per keystroke. Cached on
+// globalThis with a 5-minute TTL.
+//
+// Everything calendar-related goes through here. M2.5 may replace the innards
+// with OAuth reads; nothing downstream should need to change.
+const EVENT_DAYS = 21;
+const EVENT_TTL_MS = 5 * 60 * 1000;
+
+async function fetchEvents(days) {
+  const ics = app.plugins.getPlugin('ics');
+  if (!ics) return { events: [], problem: 'Calendar plugin not installed' };
+  if (!ics.data || !ics.data.calendars || Object.keys(ics.data.calendars).length === 0) {
+    return { events: [], problem: 'No calendar configured — see SETUP.md' };
+  }
+
+  const nowMs = Date.now();
+  const cached = globalThis._limeEvents;
+  if (L.isCacheFresh(cached, nowMs, EVENT_TTL_MS) && cached.days === days) {
+    return { events: cached.data, problem: null };
+  }
+
+  const dates = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    dates.push(L.fmtISO(d));
+  }
+
+  let events = [];
+  try {
+    events = await ics.getEvents(...dates);
+  } catch (err) {
+    console.error('lime: calendar fetch failed', err);
+    return { events: [], problem: 'Could not read calendar' };
+  }
+
+  globalThis._limeEvents = { at: nowMs, days, data: events };
+  return { events, problem: null };
+}
+
+// The calendar fetch has no timeout and, on a flaky connection with a lapsed
+// cache, can hang for a long time. Due & overdue and Recent need no network at
+// all, so they must not wait behind it — that would blank the ENTIRE dashboard
+// (no tasks, no recent notes, no error) on a slow fetch, where M1 rendered
+// instantly. Placeholders reserve Next up's and Upcoming dates' DOM position
+// now; both panels' actual content is filled in further down, after the
+// panels that don't need the network have already rendered.
+const nextUpSlot = colMid.createDiv();
+
 // ── DUE & OVERDUE (middle column) ────────────────────────────────────────
-// M2 inserts the calendar events panel above this one.
+// The Next up panel sits above this one.
 {
   const tasks = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
@@ -121,7 +181,13 @@ function openNote(path) {
   }
 }
 
+// Upcoming dates also needs EVENTS, so it renders in the same post-await phase
+// as Next up. This placeholder reserves its DOM position — below Due &
+// overdue, as spec §5.2 requires — before the fetch even starts.
+const upcomingSlot = colMid.createDiv();
+
 // ── RECENT (left column) ─────────────────────────────────────────────────
+// No calendar dependency — renders immediately, same as Due & overdue above.
 {
   const recent = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
@@ -139,6 +205,99 @@ function openNote(path) {
       const text = row.createSpan({ cls: 'lime-text', text: page.file.name });
       row.createSpan({ cls: 'lime-meta', text: L.relativeAge(page.file.mtime.ts, now.getTime()) });
       text.addEventListener('click', () => openNote(page.file.path));
+    }
+  }
+}
+
+// Everything above this line renders without touching the network. Only now
+// does the dashboard wait on the calendar — a hung or slow fetch delays just
+// the two panels below, not the whole page.
+const CAL = await fetchEvents(EVENT_DAYS);
+const EVENTS = CAL.events;
+
+// ── NEXT UP (fills the placeholder reserved above Due & overdue) ─────────
+{
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowISO = L.fmtISO(tomorrow);
+  const split = L.splitEvents(EVENTS, todayISO, tomorrowISO, now.getTime());
+
+  const todayCount = split.today.allDay.length + split.today.past.length + split.today.upcoming.length;
+  const tomorrowCount = split.tomorrow.allDay.length + split.tomorrow.timed.length;
+
+  // Empty and broken must not look the same (spec M2-D6). A clear couple of
+  // days hides the panel; a real problem, or a 21-day window with nothing in it
+  // at all, says so out loud — otherwise a dead feed reads as a free day.
+  const implausible = !CAL.problem && EVENTS.length === 0;
+  const message = CAL.problem
+    || (implausible ? `No events in ${EVENT_DAYS} days — either genuinely clear, or the feed is failing silently. Check ICS settings and the console.` : null);
+
+  if (message) {
+    const p = panelInto(nextUpSlot, 'Next up');
+    p.createDiv({ cls: 'lime-msg', text: message });
+  } else if (todayCount + tomorrowCount > 0) {
+    const p = panelInto(nextUpSlot, 'Next up');
+
+    const eventRow = (parent, event, opts) => {
+      const row = parent.createDiv({ cls: `lime-row${opts.past ? ' lime-past' : ''}${event.allDay ? ' lime-allday' : ''}` });
+      let label;
+      if (event.allDay) {
+        label = row.createSpan({ cls: 'lime-text', text: event.summary });
+        const last = L.allDayLastDayISO(event);
+        row.createSpan({ cls: 'lime-meta', text: last === opts.dayISO ? 'all day' : `until ${L.fmtShortDate(last)}` });
+      } else {
+        row.createSpan({ cls: 'lime-time', text: event.time });
+        label = row.createSpan({ cls: 'lime-text', text: event.summary });
+      }
+      // callUrl arrives from a remote feed via best-effort pattern matching, so it
+      // is not guaranteed URL-shaped. Gate on http(s) and pass noopener.
+      if (/^https?:\/\//.test(String(event.callUrl || ''))) {
+        row.addClass('lime-joinable');
+        label.addEventListener('click', () => window.open(event.callUrl, '_blank', 'noopener,noreferrer'));
+      }
+      return row;
+    };
+
+    for (const e of split.today.allDay) eventRow(p, e, { past: false, dayISO: todayISO });
+    for (const e of split.today.past) eventRow(p, e, { past: true, dayISO: todayISO });
+
+    // The divider only earns its place when there is something on both sides.
+    if (split.today.past.length > 0 && split.today.upcoming.length > 0) {
+      const line = p.createDiv({ cls: 'lime-nowline' });
+      line.createSpan({ text: `NOW ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` });
+      line.createEl('i');
+    }
+
+    for (const e of split.today.upcoming) eventRow(p, e, { past: false, dayISO: todayISO });
+
+    if (tomorrowCount > 0) {
+      p.createDiv({ cls: 'lime-daydivider', text: `Tomorrow · ${L.fmtDayLabel(tomorrow)}` });
+      for (const e of split.tomorrow.allDay) eventRow(p, e, { past: false, dayISO: tomorrowISO });
+      for (const e of split.tomorrow.timed) eventRow(p, e, { past: false, dayISO: tomorrowISO });
+    }
+  }
+}
+
+// ── UPCOMING DATES (fills the placeholder reserved below Due & overdue) ──
+// Joins calendar events to module notes on the module CODE, so an exam date is
+// stored once — in Google Calendar — and cannot drift (spec M2-D3).
+{
+  const modules = dv.pages('"02-Learning/Modules"')
+    .where((p) => p.code)
+    .array()
+    .map((p) => ({ code: String(p.code), path: p.file.path }));
+
+  const byCode = new Map(modules.map((m) => [m.code.toUpperCase(), m.path]));
+  const matches = L.matchModuleEvents(EVENTS, modules.map((m) => m.code));
+
+  if (matches.length > 0) {
+    const p = panelInto(upcomingSlot, 'Upcoming dates');
+    for (const { event, code } of matches) {
+      const row = p.createDiv({ cls: 'lime-row' });
+      const text = row.createSpan({ cls: 'lime-text', text: event.summary });
+      row.createSpan({ cls: 'lime-meta', text: L.fmtShortDate(L.eventStartISO(event)) });
+      const path = byCode.get(code.toUpperCase());
+      if (path) text.addEventListener('click', () => openNote(path));
     }
   }
 }

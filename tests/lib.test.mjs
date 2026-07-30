@@ -13,6 +13,18 @@ test('lib attaches itself to globalThis', () => {
   assert.ok(lime, 'globalThis.lime was not defined');
 });
 
+test('lib.js uses no DOM, Obsidian or Node APIs', () => {
+  // lib.js is loaded by Home.md via new Function(src)() so it runs unchanged on
+  // desktop and iOS. Any of these would break it on mobile or in Node.
+  const raw = readFileSync('_scripts/lib.js', 'utf8');
+  const code = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')      // block comments
+    .replace(/^\s*\/\/.*$/gm, '');          // line comments
+  for (const banned of ['document', 'window.', 'require(', 'import ', 'export ', 'app.', 'dv.', 'process.']) {
+    assert.ok(!code.includes(banned), `lib.js must not use ${banned} — it has to run on iOS`);
+  }
+});
+
 test('fmtISO formats local date, not UTC', () => {
   // guards the classic toISOString() bug: late-evening local dates rolling forward a day
   assert.equal(lime.fmtISO(new Date(2026, 6, 28, 23, 30)), '2026-07-28');
@@ -90,6 +102,87 @@ test('cleanTaskText leaves an unmarked task alone', () => {
   assert.equal(lime.cleanTaskText('renew student pass'), 'renew student pass');
 });
 
+test('eventStartISO uses the date part directly for all-day events', () => {
+  // All-day events carry a bare date. Parsing it as a Date and reformatting can
+  // shift it a day depending on timezone, so the string is used as-is.
+  assert.equal(
+    lime.eventStartISO({ allDay: true, startDateTime: '2026-08-12T00:00:00+08:00' }),
+    '2026-08-12'
+  );
+});
+
+test('eventStartISO uses local time for timed events', () => {
+  // The instant is built from LOCAL parts and serialised, so this expectation
+  // holds in any timezone. Reporting the LOCAL day is the whole point of the
+  // function — a fixture with a hardcoded offset would pass or fail depending
+  // on where the machine is, which is not what we want to be testing.
+  const local = new Date(2026, 6, 30, 14, 0);
+  assert.equal(
+    lime.eventStartISO({ allDay: false, startDateTime: local.toISOString() }),
+    '2026-07-30'
+  );
+  // 14:00 local cannot discriminate a UTC-getter regression across roughly
+  // UTC-9..UTC+9 — shifting by up to 9 hours in either direction still lands
+  // on the same calendar day. 01:00 local does discriminate: in any zone at
+  // UTC+2 or later, reading the UTC date instead of the local date would roll
+  // this back to the previous day.
+  const early = new Date(2026, 6, 30, 1, 0);
+  assert.equal(
+    lime.eventStartISO({ allDay: false, startDateTime: early.toISOString() }),
+    '2026-07-30'
+  );
+});
+
+test('eventStartISO returns null for an unparseable start instead of "NaN-NaN-NaN"', () => {
+  // This is the mechanism that turned a version mismatch (a missing
+  // startDateTime field) into an invisible failure: fmtISO(new Date(garbage))
+  // used to produce the literal string "NaN-NaN-NaN", which callers then
+  // treated as a valid day. Returning null lets splitEvents skip it outright.
+  assert.equal(lime.eventStartISO({ allDay: false, startDateTime: 'not-a-date' }), null);
+  assert.equal(lime.eventStartISO({ allDay: false, startDateTime: undefined }), null);
+});
+
+test('allDayLastDayISO subtracts a day because the plugin end is exclusive', () => {
+  // The plugin documents this: a holiday running through Sep 14 reports an
+  // endDateTime of Sep 15 00:00. Displaying the raw end is off by one.
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-09-10T00:00:00+08:00', endDateTime: '2026-09-15T00:00:00+08:00' }),
+    '2026-09-14'
+  );
+});
+
+test('allDayLastDayISO handles a single-day all-day event', () => {
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-08-12T00:00:00+08:00', endDateTime: '2026-08-13T00:00:00+08:00' }),
+    '2026-08-12'
+  );
+});
+
+test('allDayLastDayISO crosses a month boundary correctly', () => {
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-07-30T00:00:00+08:00', endDateTime: '2026-08-01T00:00:00+08:00' }),
+    '2026-07-31'
+  );
+});
+
+test('fmtShortDate renders a compact day and month', () => {
+  assert.equal(lime.fmtShortDate('2026-08-12'), '12 Aug');
+  assert.equal(lime.fmtShortDate('2026-01-05'), '5 Jan');
+});
+
+test('isCacheFresh accepts a recent entry and rejects a stale one', () => {
+  const now = 1_000_000;
+  assert.equal(lime.isCacheFresh({ at: now - 1000, data: [] }, now, 5000), true);
+  assert.equal(lime.isCacheFresh({ at: now - 9000, data: [] }, now, 5000), false);
+});
+
+test('isCacheFresh rejects a missing or malformed entry', () => {
+  const now = 1_000_000;
+  assert.equal(lime.isCacheFresh(null, now, 5000), false);
+  assert.equal(lime.isCacheFresh(undefined, now, 5000), false);
+  assert.equal(lime.isCacheFresh({ data: [] }, now, 5000), false);
+});
+
 test('compareTasks sorts most-overdue first, undated last', () => {
   const tasks = [
     { id: 'undated', dueISO: null },
@@ -100,4 +193,180 @@ test('compareTasks sorts most-overdue first, undated last', () => {
   ];
   const order = tasks.sort(lime.compareTasks).map((t) => t.id);
   assert.deepEqual(order, ['veryOld', 'old', 'today', 'later', 'undated']);
+});
+
+// 2026-07-30 is a Thursday. "now" is 15:10 local.
+const T_TODAY = '2026-07-30';
+const T_TOMORROW = '2026-07-31';
+const T_NOW = new Date(2026, 6, 30, 15, 10).getTime();
+
+// Timed fixtures are built from LOCAL date parts and serialised, so they round-trip
+// to the same local day wherever the tests run. Hardcoding a +08:00 offset here
+// would make these tests pass in Singapore and fail in California, testing the
+// machine's timezone rather than splitEvents.
+function timed(startH, endH, summary, day = 30) {
+  const start = new Date(2026, 6, day, startH, 0);
+  const end = new Date(2026, 6, day, endH, 0);
+  return {
+    allDay: false,
+    summary,
+    startDateTime: start.toISOString(),
+    endDateTime: end.toISOString(),
+  };
+}
+function allDayOn(day, summary) {
+  const p = (n) => String(n).padStart(2, '0');
+  return {
+    allDay: true,
+    summary,
+    startDateTime: `2026-07-${p(day)}T00:00:00+08:00`,
+    endDateTime: `2026-07-${p(day + 1)}T00:00:00+08:00`,
+  };
+}
+
+test('splitEvents separates today from tomorrow and drops other days', () => {
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(11, 12, 'lab', 31),
+    timed(9, 10, 'next week', 6),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.tomorrow.timed.map((e) => e.summary), ['lab']);
+});
+
+test('splitEvents puts ended events in past and future ones in upcoming', () => {
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(17, 18, 'recruiter call'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.today.upcoming.map((e) => e.summary), ['recruiter call']);
+});
+
+test('splitEvents treats an in-progress event as upcoming, not past', () => {
+  // It is 15:10 and this runs 14:00-16:00. It has not finished, so dimming it
+  // as history would be wrong — it is what is happening right now.
+  const out = lime.splitEvents([timed(14, 16, 'lecture')], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past, []);
+  assert.deepEqual(out.today.upcoming.map((e) => e.summary), ['lecture']);
+});
+
+test('splitEvents keeps all-day events out of past and upcoming', () => {
+  const out = lime.splitEvents([
+    allDayOn(30, 'CS3230 Midterm'),
+    allDayOn(31, 'public holiday'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.allDay.map((e) => e.summary), ['CS3230 Midterm']);
+  assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['public holiday']);
+  assert.deepEqual(out.today.past, []);
+  assert.deepEqual(out.today.upcoming, []);
+});
+
+test('splitEvents sorts timed events ascending by start', () => {
+  const out = lime.splitEvents([
+    timed(17, 18, 'third'),
+    timed(9, 10, 'first'),
+    timed(14, 15, 'second'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(
+    [...out.today.past, ...out.today.upcoming].map((e) => e.summary),
+    ['first', 'second', 'third']
+  );
+});
+
+test('splitEvents returns empty buckets rather than undefined', () => {
+  const out = lime.splitEvents([], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out, {
+    today: { allDay: [], past: [], upcoming: [] },
+    tomorrow: { allDay: [], timed: [] },
+  });
+});
+
+test('splitEvents includes a multi-day all-day event that spans today', () => {
+  // A revision week starting Monday is still "today's" all-day event on Wednesday.
+  const out = lime.splitEvents([{
+    allDay: true, summary: 'revision week',
+    startDateTime: '2026-07-27T00:00:00+08:00',
+    endDateTime: '2026-08-03T00:00:00+08:00',
+  }], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.allDay.map((e) => e.summary), ['revision week']);
+  assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['revision week']);
+});
+
+test('splitEvents keeps recurring instances independent rather than collapsing them', () => {
+  // The plugin's own source calls this out (spec §10): recurring events arrive
+  // as separate instances that happen to share a summary. splitEvents must not
+  // dedupe or merge on that text — each instance keeps its own day and slot.
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(9, 10, 'standup', 31),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.tomorrow.timed.map((e) => e.summary), ['standup']);
+});
+
+test('splitEvents skips an event whose start does not parse rather than bucketing it', () => {
+  // Closes the C1 failure mode at its source: a bad/missing startDateTime used
+  // to produce "NaN-NaN-NaN", which never matched todayISO/tomorrowISO by
+  // string equality — but skipping outright, rather than relying on that
+  // accident, is the deliberate contract now.
+  const out = lime.splitEvents([
+    { allDay: false, summary: 'broken', startDateTime: 'not-a-date', endDateTime: 'not-a-date' },
+    timed(9, 10, 'standup'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.today.upcoming, []);
+});
+
+test('matchModuleEvents joins an event to a module code in its summary', () => {
+  const events = [{ summary: 'CS3230 Midterm', startDateTime: '2026-08-12T09:00:00+08:00' }];
+  const out = lime.matchModuleEvents(events, ['CS3230', 'CS2106']);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].code, 'CS3230');
+  assert.equal(out[0].event.summary, 'CS3230 Midterm');
+});
+
+test('matchModuleEvents finds a code mid-summary, not just as a prefix', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'Midterm for CS3230 (MPSH2)', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out.map((m) => m.code), ['CS3230']);
+});
+
+test('matchModuleEvents ignores events with no known code', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'Dentist', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out, []);
+});
+
+test('matchModuleEvents does not match a code that is part of a longer code', () => {
+  // 'CS210' must not match 'CS2106' — a naive substring test would.
+  const out = lime.matchModuleEvents(
+    [{ summary: 'CS2106 lab', startDateTime: '2026-08-02T11:00:00+08:00' }],
+    ['CS210']
+  );
+  assert.deepEqual(out, []);
+});
+
+test('matchModuleEvents is case-insensitive on the code', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'cs3230 tutorial', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out.map((m) => m.code), ['CS3230']);
+});
+
+test('matchModuleEvents sorts by start and tolerates an empty code list', () => {
+  const events = [
+    { summary: 'CS3230 Midterm', startDateTime: '2026-08-12T09:00:00+08:00' },
+    { summary: 'CS2106 lab', startDateTime: '2026-08-02T11:00:00+08:00' },
+  ];
+  assert.deepEqual(
+    lime.matchModuleEvents(events, ['CS3230', 'CS2106']).map((m) => m.code),
+    ['CS2106', 'CS3230']
+  );
+  assert.deepEqual(lime.matchModuleEvents(events, []), []);
 });

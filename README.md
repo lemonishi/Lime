@@ -4,7 +4,7 @@ A personal Obsidian vault built to be **one place to view and manage everything 
 
 Not a general-purpose PKM system. It was designed around one person's actual life: a CS undergraduate who is simultaneously interning, job hunting, working through learncpp and the NeetCode 150, building side projects, and logging every expense. Where a generic template would offer options, this makes a decision.
 
-> **Status: M1 (Foundation) of 6 milestones.** The vault runs and you can work out of it today. Calendar, capture, and the learning/money/job-search panels are not built yet — see the [roadmap](#roadmap).
+> **Status: M2 (Calendar) of 6 milestones.** The vault runs and you can work out of it today, and the dashboard now reads your Google Calendar. Capture, and the learning/money/job-search panels are not built yet — see the [roadmap](#roadmap).
 
 ---
 
@@ -16,15 +16,23 @@ Not a general-purpose PKM system. It was designed around one person's actual lif
 ┌ banner ────────────────────────────────────────────────────────────┐
 │                                          Wednesday 29 July         │
 ├ COLUMN 1 ─────────┬ COLUMN 2 ───────────────┬ COLUMN 3 ────────────┤
-│ Recent            │ Due & overdue           │ (M4/M5)              │
+│ Recent            │ Next up                 │ (M4/M5)              │
+│                   │   today + tomorrow's    │                      │
+│                   │   calendar events       │                      │
+│                   │ Due & overdue           │                      │
 │                   │   overdue first, then   │                      │
 │                   │   today, colour-coded   │                      │
+│                   │ Upcoming dates          │                      │
+│                   │   exams joined to       │                      │
+│                   │   module notes          │                      │
 └───────────────────┴─────────────────────────┴──────────────────────┘
 ```
 
-**Panels hide themselves when empty.** Nothing renders a sad "no items" box — with no due tasks, the Due & overdue panel simply isn't there. That is what keeps a dense layout honest as your usage shifts.
+**Panels hide themselves when empty.** Nothing renders a sad "no items" box — with no due tasks, the Due & overdue panel simply isn't there. That is what keeps a dense layout honest as your usage shifts. (Next up is a deliberate exception: a genuinely empty 21-day calendar window still renders a one-line message, because an empty panel would otherwise be indistinguishable from a silently broken feed — see the design spec's M2-D6.)
 
 Tasks are ordinary `- [ ]` checkboxes written wherever you happen to be, with an optional `📅 2026-07-29`. The dashboard sweeps the whole vault into one list. Ticking a box there rewrites that exact line in the source note — and springs back if the write doesn't land, so the dashboard never shows a completed task that is still open on disk.
+
+The calendar panels read a Google Calendar via the ICS Calendar plugin, cached for five minutes so typing in a daily note never costs a network round-trip. See [SETUP.md](SETUP.md) for connecting your own calendar.
 
 ## Structure
 
@@ -50,11 +58,11 @@ Requires **Obsidian 1.12.7+** and **Node 24**. Zero npm dependencies.
 ```bash
 git clone https://github.com/lemonishi/Lime.git
 cd Lime
-npm test               # 19 tests, no install step needed
+npm test               # 56 tests, no install step needed
 npm run install-plugins  # only if plugin versions have drifted
 ```
 
-Then follow **[SETUP.md](SETUP.md)** for the parts that need Obsidian's GUI — the whole thing is about ten minutes, and it ends with a 16-item acceptance checklist.
+Then follow **[SETUP.md](SETUP.md)** for the parts that need Obsidian's GUI — the whole thing is about ten minutes, and it ends with M1 and M2 acceptance checklists.
 
 Drop your own image at `_assets/home-banner.jpg` to change the header; `object-fit: cover` crops anything sensibly.
 
@@ -75,8 +83,8 @@ Drop your own image at `_assets/home-banner.jpg` to change the header; `object-f
 | | Milestone | Status |
 |---|---|---|
 | M1 | Foundation — skeleton, plugins, daily notes, dashboard | **done** |
-| M2 | Calendar — Google Calendar read-only via ICS | next |
-| M3 | Capture — QuickAdd actions, mobile toolbar | |
+| M2 | Calendar — Google Calendar read-only via ICS | **done** |
+| M3 | Capture — QuickAdd actions, mobile toolbar | next |
 | M4 | Learning — courses, drills, spaced-repetition review panel | |
 | M5 | Job search + money — applications, backlinked companies, ledger | |
 | M6 | Housekeeping — needs-attention panel, Bases views, archive flow | |
@@ -85,7 +93,7 @@ Each milestone ends in a checkpoint: use it for a few days, then the next one ge
 
 ## Design docs
 
-The full reasoning lives in [`docs/superpowers/`](docs/superpowers/) — a design spec covering every decision and why, and the M1 implementation plan. Worth reading if you want the *why* rather than the *what*.
+The full reasoning lives in [`docs/superpowers/`](docs/superpowers/) — a design spec per milestone covering every decision and why, plus the matching implementation plans. Worth reading if you want the *why* rather than the *what*.
 
 ## Privacy
 

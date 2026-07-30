@@ -95,6 +95,75 @@
 .lime-tone-soon    { opacity: 0.65; }
 .lime-tone-later   { opacity: 0.45; }
 
+/* ── calendar events ─────────────────────────────────────────────────────── */
+
+/* Time column sized so summaries align down the panel.
+   min-width rather than width: the ICS plugin's time format is user-configurable
+   and defaults to HH:mm ("14:00", 5 chars), but a 12-hour setting emits
+   "11:00 pm" (8 chars). A fixed 3.4em would wrap that onto a second line and
+   destroy the alignment this rule exists to create. Since every row shares one
+   format, min-width keeps them aligned at whatever that format needs. */
+.lime-row .lime-time {
+  flex: none;
+  min-width: 3.4em;
+  white-space: nowrap;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Finished events stay readable but recede. */
+.lime-row.lime-past { opacity: 0.4; }
+
+/* All-day events have no time to sort by, so they are visually a different
+   kind of thing rather than a row missing its first column. */
+.lime-row.lime-allday {
+  background: color-mix(in srgb, var(--text-accent) 12%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--text-accent) 40%, transparent);
+}
+
+/* The now line divides done from upcoming. */
+.lime-nowline {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 7px 0;
+}
+.lime-nowline span {
+  font-size: 0.66em;
+  letter-spacing: 0.12em;
+  font-weight: 700;
+  color: var(--text-error);
+  white-space: nowrap;
+}
+.lime-nowline i {
+  flex: 1;
+  height: 1px;
+  background: var(--text-error);
+  opacity: 0.5;
+}
+
+.lime-daydivider {
+  font-size: 0.66em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  font-weight: 700;
+  margin: 10px 0 5px;
+}
+
+/* Failure and implausibility messages. Deliberately visible: an empty panel
+   reads as "clear day", so a broken feed must not look like one (spec M2-D6). */
+.lime-msg {
+  font-size: 0.85em;
+  opacity: 0.7;
+  padding: 4px 7px;
+  line-height: 1.4;
+}
+
+/* Rows carrying a meeting link. .lime-text already sets cursor: pointer for
+   every row, so only the hover affordance is new here. */
+.lime-row.lime-joinable .lime-text:hover { text-decoration: underline; }
+
 /* Layout A is dense by design (spec §8). Obsidian's readable-line-length would
    squeeze the three columns into a ~700px column and ellipsise almost every row. */
 .lime-home .markdown-preview-sizer,

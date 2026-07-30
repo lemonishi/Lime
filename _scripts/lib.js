@@ -67,6 +67,51 @@ function cleanTaskText(text) {
     .trim();
 }
 
+// ── calendar events ──────────────────────────────────────────────────────────
+//
+// Shapes ICS Calendar plugin events (its IEvent interface) for display. Stays
+// pure: takes plain objects, returns plain data, touches no plugin API.
+
+// Which local day an event belongs to.
+//
+// All-day events carry a bare date at midnight. Round-tripping that through Date
+// and back can shift it a day depending on the offset, so its date part is taken
+// verbatim. Timed events are parsed, because their local day is what matters.
+function eventStartISO(event) {
+  if (event.allDay) return String(event.startDateTime).slice(0, 10);
+  const d = new Date(event.startDateTime);
+  // An unparseable start used to fall through to fmtISO() and produce the
+  // literal string "NaN-NaN-NaN", which splitEvents then happily bucketed —
+  // this is the mechanism that turned a version-mismatch (missing
+  // startDateTime) into an invisible failure instead of a loud one. Returning
+  // null lets callers skip the event instead of misbucketing it.
+  if (Number.isNaN(d.getTime())) return null;
+  return fmtISO(d);
+}
+
+// An all-day event's true final day.
+//
+// The plugin documents that all-day DTEND is EXCLUSIVE: an event running through
+// Sep 14 reports endDateTime of Sep 15 00:00. Showing the raw end is off by one.
+function allDayLastDayISO(event) {
+  const end = parseISO(String(event.endDateTime).slice(0, 10));
+  end.setDate(end.getDate() - 1);
+  return fmtISO(end);
+}
+
+function fmtShortDate(iso) {
+  const d = parseISO(iso);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+// The ICS plugin re-downloads and re-parses the whole feed on every getEvents()
+// call, and Dataview re-renders on any vault change — so without a cache every
+// keystroke in a daily note costs a calendar download.
+function isCacheFresh(entry, nowMs, ttlMs) {
+  if (!entry || typeof entry.at !== 'number') return false;
+  return nowMs - entry.at < ttlMs;
+}
+
 // Undated tasks sink to the bottom; everything else is chronological, so the
 // most-overdue item is always the first thing read.
 function compareTasks(a, b) {
@@ -76,4 +121,75 @@ function compareTasks(a, b) {
   return a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : 0;
 }
 
-globalThis.lime = { fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks, parseISO, daysBetween };
+// Group a day's events for the "Next up" panel.
+//
+// All-day events are kept apart from timed ones: they have no start time, so they
+// cannot sort among them, and spec §5.1 pins them above their own day's section.
+// A multi-day all-day event counts for every day it covers, so a revision week
+// still shows on the Wednesday.
+//
+// "past" means ENDED. An event that has started but not finished is what is
+// happening right now, so it belongs in upcoming — dimming it as history would be
+// actively misleading.
+function splitEvents(events, todayISO, tomorrowISO, nowMs) {
+  const out = {
+    today: { allDay: [], past: [], upcoming: [] },
+    tomorrow: { allDay: [], timed: [] },
+  };
+  const byStart = (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime);
+
+  for (const e of events) {
+    const day = eventStartISO(e);
+    // Skip rather than silently bucket: an unparseable start used to become
+    // "NaN-NaN-NaN", which never equalled todayISO/tomorrowISO but WOULD have
+    // satisfied a broken range check — skipping outright is the safe failure.
+    if (day === null) continue;
+    if (e.allDay) {
+      const to = allDayLastDayISO(e);
+      if (todayISO >= day && todayISO <= to) out.today.allDay.push(e);
+      if (tomorrowISO >= day && tomorrowISO <= to) out.tomorrow.allDay.push(e);
+      continue;
+    }
+    if (day === todayISO) {
+      const ended = new Date(e.endDateTime).getTime() <= nowMs;
+      (ended ? out.today.past : out.today.upcoming).push(e);
+    } else if (day === tomorrowISO) {
+      out.tomorrow.timed.push(e);
+    }
+  }
+
+  out.today.past.sort(byStart);
+  out.today.upcoming.sort(byStart);
+  out.tomorrow.timed.sort(byStart);
+  return out;
+}
+
+// Join calendar events to module notes on the MODULE CODE, never on the date.
+//
+// Google Calendar owns when an exam is; 02-Learning/Modules/ owns which modules
+// exist. Matching on the code means the date is stored exactly once and cannot
+// drift (spec M2-D3).
+//
+// Word boundaries matter: a plain substring test would let 'CS210' match
+// 'CS2106' and attach an event to the wrong module.
+function matchModuleEvents(events, moduleCodes) {
+  const out = [];
+  for (const event of events) {
+    const summary = String(event.summary || '');
+    for (const code of moduleCodes) {
+      const escaped = String(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`\\b${escaped}\\b`, 'i').test(summary)) {
+        out.push({ event, code });
+        break;
+      }
+    }
+  }
+  return out.sort((a, b) => new Date(a.event.startDateTime) - new Date(b.event.startDateTime));
+}
+
+globalThis.lime = {
+  fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks,
+  parseISO, daysBetween,
+  eventStartISO, allDayLastDayISO, fmtShortDate, isCacheFresh, splitEvents,
+  matchModuleEvents,
+};
