@@ -13,6 +13,18 @@ test('lib attaches itself to globalThis', () => {
   assert.ok(lime, 'globalThis.lime was not defined');
 });
 
+test('lib.js uses no DOM, Obsidian or Node APIs', () => {
+  // lib.js is loaded by Home.md via new Function(src)() so it runs unchanged on
+  // desktop and iOS. Any of these would break it on mobile or in Node.
+  const raw = readFileSync('_scripts/lib.js', 'utf8');
+  const code = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')      // block comments
+    .replace(/^\s*\/\/.*$/gm, '');          // line comments
+  for (const banned of ['document', 'window.', 'require(', 'import ', 'export ', 'app.', 'dv.', 'process.']) {
+    assert.ok(!code.includes(banned), `lib.js must not use ${banned} — it has to run on iOS`);
+  }
+});
+
 test('fmtISO formats local date, not UTC', () => {
   // guards the classic toISOString() bug: late-evening local dates rolling forward a day
   assert.equal(lime.fmtISO(new Date(2026, 6, 28, 23, 30)), '2026-07-28');
