@@ -175,3 +175,101 @@ test('compareTasks sorts most-overdue first, undated last', () => {
   const order = tasks.sort(lime.compareTasks).map((t) => t.id);
   assert.deepEqual(order, ['veryOld', 'old', 'today', 'later', 'undated']);
 });
+
+// 2026-07-30 is a Thursday. "now" is 15:10 local.
+const T_TODAY = '2026-07-30';
+const T_TOMORROW = '2026-07-31';
+const T_NOW = new Date(2026, 6, 30, 15, 10).getTime();
+
+// Timed fixtures are built from LOCAL date parts and serialised, so they round-trip
+// to the same local day wherever the tests run. Hardcoding a +08:00 offset here
+// would make these tests pass in Singapore and fail in California, testing the
+// machine's timezone rather than splitEvents.
+function timed(startH, endH, summary, day = 30) {
+  const start = new Date(2026, 6, day, startH, 0);
+  const end = new Date(2026, 6, day, endH, 0);
+  return {
+    allDay: false,
+    summary,
+    startDateTime: start.toISOString(),
+    endDateTime: end.toISOString(),
+  };
+}
+function allDayOn(day, summary) {
+  const p = (n) => String(n).padStart(2, '0');
+  return {
+    allDay: true,
+    summary,
+    startDateTime: `2026-07-${p(day)}T00:00:00+08:00`,
+    endDateTime: `2026-07-${p(day + 1)}T00:00:00+08:00`,
+  };
+}
+
+test('splitEvents separates today from tomorrow and drops other days', () => {
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(11, 12, 'lab', 31),
+    timed(9, 10, 'next week', 6),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.tomorrow.timed.map((e) => e.summary), ['lab']);
+});
+
+test('splitEvents puts ended events in past and future ones in upcoming', () => {
+  const out = lime.splitEvents([
+    timed(9, 10, 'standup'),
+    timed(17, 18, 'recruiter call'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past.map((e) => e.summary), ['standup']);
+  assert.deepEqual(out.today.upcoming.map((e) => e.summary), ['recruiter call']);
+});
+
+test('splitEvents treats an in-progress event as upcoming, not past', () => {
+  // It is 15:10 and this runs 14:00-16:00. It has not finished, so dimming it
+  // as history would be wrong — it is what is happening right now.
+  const out = lime.splitEvents([timed(14, 16, 'lecture')], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.past, []);
+  assert.deepEqual(out.today.upcoming.map((e) => e.summary), ['lecture']);
+});
+
+test('splitEvents keeps all-day events out of past and upcoming', () => {
+  const out = lime.splitEvents([
+    allDayOn(30, 'CS3230 Midterm'),
+    allDayOn(31, 'public holiday'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.allDay.map((e) => e.summary), ['CS3230 Midterm']);
+  assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['public holiday']);
+  assert.deepEqual(out.today.past, []);
+  assert.deepEqual(out.today.upcoming, []);
+});
+
+test('splitEvents sorts timed events ascending by start', () => {
+  const out = lime.splitEvents([
+    timed(17, 18, 'third'),
+    timed(9, 10, 'first'),
+    timed(14, 15, 'second'),
+  ], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(
+    [...out.today.past, ...out.today.upcoming].map((e) => e.summary),
+    ['first', 'second', 'third']
+  );
+});
+
+test('splitEvents returns empty buckets rather than undefined', () => {
+  const out = lime.splitEvents([], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out, {
+    today: { allDay: [], past: [], upcoming: [] },
+    tomorrow: { allDay: [], timed: [] },
+  });
+});
+
+test('splitEvents includes a multi-day all-day event that spans today', () => {
+  // A revision week starting Monday is still "today's" all-day event on Wednesday.
+  const out = lime.splitEvents([{
+    allDay: true, summary: 'revision week',
+    startDateTime: '2026-07-27T00:00:00+08:00',
+    endDateTime: '2026-08-03T00:00:00+08:00',
+  }], T_TODAY, T_TOMORROW, T_NOW);
+  assert.deepEqual(out.today.allDay.map((e) => e.summary), ['revision week']);
+  assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['revision week']);
+});

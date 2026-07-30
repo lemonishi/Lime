@@ -114,8 +114,48 @@ function compareTasks(a, b) {
   return a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : 0;
 }
 
+// Group a day's events for the "Next up" panel.
+//
+// All-day events are kept apart from timed ones: they have no start time, so they
+// cannot sort among them, and spec §5.1 pins them above their own day's section.
+// A multi-day all-day event counts for every day it covers, so a revision week
+// still shows on the Wednesday.
+//
+// "past" means ENDED. An event that has started but not finished is what is
+// happening right now, so it belongs in upcoming — dimming it as history would be
+// actively misleading.
+function splitEvents(events, todayISO, tomorrowISO, nowMs) {
+  const out = {
+    today: { allDay: [], past: [], upcoming: [] },
+    tomorrow: { allDay: [], timed: [] },
+  };
+  const byStart = (a, b) => new Date(a.startDateTime) - new Date(b.startDateTime);
+
+  for (const e of events) {
+    if (e.allDay) {
+      const from = eventStartISO(e);
+      const to = allDayLastDayISO(e);
+      if (todayISO >= from && todayISO <= to) out.today.allDay.push(e);
+      if (tomorrowISO >= from && tomorrowISO <= to) out.tomorrow.allDay.push(e);
+      continue;
+    }
+    const day = eventStartISO(e);
+    if (day === todayISO) {
+      const ended = new Date(e.endDateTime).getTime() <= nowMs;
+      (ended ? out.today.past : out.today.upcoming).push(e);
+    } else if (day === tomorrowISO) {
+      out.tomorrow.timed.push(e);
+    }
+  }
+
+  out.today.past.sort(byStart);
+  out.today.upcoming.sort(byStart);
+  out.tomorrow.timed.sort(byStart);
+  return out;
+}
+
 globalThis.lime = {
   fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks,
   parseISO, daysBetween,
-  eventStartISO, allDayLastDayISO, fmtShortDate, isCacheFresh,
+  eventStartISO, allDayLastDayISO, fmtShortDate, isCacheFresh, splitEvents,
 };
