@@ -154,8 +154,32 @@ function splitEvents(events, todayISO, tomorrowISO, nowMs) {
   return out;
 }
 
+// Join calendar events to module notes on the MODULE CODE, never on the date.
+//
+// Google Calendar owns when an exam is; 02-Learning/Modules/ owns which modules
+// exist. Matching on the code means the date is stored exactly once and cannot
+// drift (spec M2-D3).
+//
+// Word boundaries matter: a plain substring test would let 'CS210' match
+// 'CS2106' and attach an event to the wrong module.
+function matchModuleEvents(events, moduleCodes) {
+  const out = [];
+  for (const event of events) {
+    const summary = String(event.summary || '');
+    for (const code of moduleCodes) {
+      const escaped = String(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (new RegExp(`\\b${escaped}\\b`, 'i').test(summary)) {
+        out.push({ event, code });
+        break;
+      }
+    }
+  }
+  return out.sort((a, b) => new Date(a.event.startDateTime) - new Date(b.event.startDateTime));
+}
+
 globalThis.lime = {
   fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks,
   parseISO, daysBetween,
   eventStartISO, allDayLastDayISO, fmtShortDate, isCacheFresh, splitEvents,
+  matchModuleEvents,
 };

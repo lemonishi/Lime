@@ -273,3 +273,56 @@ test('splitEvents includes a multi-day all-day event that spans today', () => {
   assert.deepEqual(out.today.allDay.map((e) => e.summary), ['revision week']);
   assert.deepEqual(out.tomorrow.allDay.map((e) => e.summary), ['revision week']);
 });
+
+test('matchModuleEvents joins an event to a module code in its summary', () => {
+  const events = [{ summary: 'CS3230 Midterm', startDateTime: '2026-08-12T09:00:00+08:00' }];
+  const out = lime.matchModuleEvents(events, ['CS3230', 'CS2106']);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].code, 'CS3230');
+  assert.equal(out[0].event.summary, 'CS3230 Midterm');
+});
+
+test('matchModuleEvents finds a code mid-summary, not just as a prefix', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'Midterm for CS3230 (MPSH2)', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out.map((m) => m.code), ['CS3230']);
+});
+
+test('matchModuleEvents ignores events with no known code', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'Dentist', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out, []);
+});
+
+test('matchModuleEvents does not match a code that is part of a longer code', () => {
+  // 'CS210' must not match 'CS2106' — a naive substring test would.
+  const out = lime.matchModuleEvents(
+    [{ summary: 'CS2106 lab', startDateTime: '2026-08-02T11:00:00+08:00' }],
+    ['CS210']
+  );
+  assert.deepEqual(out, []);
+});
+
+test('matchModuleEvents is case-insensitive on the code', () => {
+  const out = lime.matchModuleEvents(
+    [{ summary: 'cs3230 tutorial', startDateTime: '2026-08-12T09:00:00+08:00' }],
+    ['CS3230']
+  );
+  assert.deepEqual(out.map((m) => m.code), ['CS3230']);
+});
+
+test('matchModuleEvents sorts by start and tolerates an empty code list', () => {
+  const events = [
+    { summary: 'CS3230 Midterm', startDateTime: '2026-08-12T09:00:00+08:00' },
+    { summary: 'CS2106 lab', startDateTime: '2026-08-02T11:00:00+08:00' },
+  ];
+  assert.deepEqual(
+    lime.matchModuleEvents(events, ['CS3230', 'CS2106']).map((m) => m.code),
+    ['CS2106', 'CS3230']
+  );
+  assert.deepEqual(lime.matchModuleEvents(events, []), []);
+});
