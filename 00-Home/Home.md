@@ -61,6 +61,113 @@ function openNote(path) {
   app.workspace.openLinkText(path, '', false);
 }
 
+// ── calendar fetch ───────────────────────────────────────────────────────
+// The ICS plugin re-downloads and re-parses the entire feed on every
+// getEvents() call, and Dataview re-renders on any vault change — so an
+// uncached fetch would cost a calendar download per keystroke. Cached on
+// globalThis with a 5-minute TTL.
+//
+// Everything calendar-related goes through here. M2.5 may replace the innards
+// with OAuth reads; nothing downstream should need to change.
+const EVENT_DAYS = 21;
+const EVENT_TTL_MS = 5 * 60 * 1000;
+
+async function fetchEvents(days) {
+  const ics = app.plugins.getPlugin('ics');
+  if (!ics) return { events: [], problem: 'Calendar plugin not installed' };
+  if (!ics.data || !ics.data.calendars || Object.keys(ics.data.calendars).length === 0) {
+    return { events: [], problem: 'No calendar configured — see SETUP.md' };
+  }
+
+  const nowMs = Date.now();
+  const cached = globalThis._limeEvents;
+  if (L.isCacheFresh(cached, nowMs, EVENT_TTL_MS) && cached.days === days) {
+    return { events: cached.data, problem: null };
+  }
+
+  const dates = [];
+  for (let i = 0; i < days; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    dates.push(L.fmtISO(d));
+  }
+
+  let events = [];
+  try {
+    events = await ics.getEvents(...dates);
+  } catch (err) {
+    console.error('lime: calendar fetch failed', err);
+    return { events: [], problem: 'Could not read calendar' };
+  }
+
+  globalThis._limeEvents = { at: nowMs, days, data: events };
+  return { events, problem: null };
+}
+
+const CAL = await fetchEvents(EVENT_DAYS);
+const EVENTS = CAL.events;
+
+// ── NEXT UP (middle column, above Due & overdue) ─────────────────────────
+{
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowISO = L.fmtISO(tomorrow);
+  const split = L.splitEvents(EVENTS, todayISO, tomorrowISO, now.getTime());
+
+  const todayCount = split.today.allDay.length + split.today.past.length + split.today.upcoming.length;
+  const tomorrowCount = split.tomorrow.allDay.length + split.tomorrow.timed.length;
+
+  // Empty and broken must not look the same (spec M2-D6). A clear couple of
+  // days hides the panel; a real problem, or a 21-day window with nothing in it
+  // at all, says so out loud — otherwise a dead feed reads as a free day.
+  const implausible = !CAL.problem && EVENTS.length === 0;
+  const message = CAL.problem
+    || (implausible ? `No events in ${EVENT_DAYS} days — check ICS settings if that looks wrong` : null);
+
+  if (message) {
+    const p = panel(colMid, 'Next up');
+    p.createDiv({ cls: 'lime-msg', text: message });
+  } else if (todayCount + tomorrowCount > 0) {
+    const p = panel(colMid, 'Next up');
+
+    const eventRow = (parent, event, opts) => {
+      const row = parent.createDiv({ cls: `lime-row${opts.past ? ' lime-past' : ''}${event.allDay ? ' lime-allday' : ''}` });
+      if (event.allDay) {
+        row.createSpan({ cls: 'lime-text', text: event.summary });
+        const last = L.allDayLastDayISO(event);
+        row.createSpan({ cls: 'lime-meta', text: last === opts.dayISO ? 'all day' : `until ${L.fmtShortDate(last)}` });
+      } else {
+        row.createSpan({ cls: 'lime-time', text: event.time });
+        row.createSpan({ cls: 'lime-text', text: event.summary });
+      }
+      if (event.callUrl) {
+        row.addClass('lime-joinable');
+        const text = row.querySelector('.lime-text');
+        text.addEventListener('click', () => window.open(event.callUrl, '_blank'));
+      }
+      return row;
+    };
+
+    for (const e of split.today.allDay) eventRow(p, e, { past: false, dayISO: todayISO });
+    for (const e of split.today.past) eventRow(p, e, { past: true, dayISO: todayISO });
+
+    // The divider only earns its place when there is something on both sides.
+    if (split.today.past.length > 0 && split.today.upcoming.length > 0) {
+      const line = p.createDiv({ cls: 'lime-nowline' });
+      line.createSpan({ text: `NOW ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` });
+      line.createEl('i');
+    }
+
+    for (const e of split.today.upcoming) eventRow(p, e, { past: false, dayISO: todayISO });
+
+    if (tomorrowCount > 0) {
+      p.createDiv({ cls: 'lime-daydivider', text: `Tomorrow · ${L.fmtDayLabel(tomorrow)}` });
+      for (const e of split.tomorrow.allDay) eventRow(p, e, { past: false, dayISO: tomorrowISO });
+      for (const e of split.tomorrow.timed) eventRow(p, e, { past: false, dayISO: tomorrowISO });
+    }
+  }
+}
+
 // ── DUE & OVERDUE (middle column) ────────────────────────────────────────
 // M2 inserts the calendar events panel above this one.
 {
