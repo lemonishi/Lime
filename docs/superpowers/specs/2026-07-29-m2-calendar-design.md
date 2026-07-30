@@ -141,6 +141,17 @@ internals wholesale.
 `Home.md` grows from ~140 to roughly 200 lines. Acceptable. **If M4's panels push it past
 ~250, extract rendering into a second script** rather than letting it sprawl.
 
+> **Update after implementation: the trigger has already fired.** `Home.md` finished M2 at
+> **279 lines** (the working `dataviewjs` block alone is ~253), so the ~250 threshold was
+> crossed a milestone earlier than anticipated. The file is still comprehensible — each panel
+> is a self-contained `{ }` block under a banner comment, reading top-to-bottom in render
+> order — so extraction was deliberately *not* done mid-milestone. But M4 queues two more
+> panels into the same block, which would push it past 350–400 lines.
+>
+> **M4's first panel-adding task must therefore open with "extract rendering into
+> `_scripts/render.js`" as an explicit step**, not as an afterthought once the file is large
+> enough that splitting it cleanly is hard.
+
 ## 7. Failure modes
 
 | Situation | Detectable? | Behaviour |
