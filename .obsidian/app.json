@@ -3,5 +3,5 @@
   "userIgnoreFilters": [
     "docs/"
   ],
-  "vimMode": true
+  "vimMode": false
 }

@@ -220,7 +220,9 @@ Cannot be scripted — needs the Google Calendar web UI:
 1. Google Calendar → hover the calendar → **⋮ → Settings**
 2. **Integrate calendar → Secret address in iCal format → copy**
 3. Obsidian → Settings → ICS → add a calendar, paste the URL
-4. Run `ICS: Import events` once to confirm the feed parses
+4. Open today's daily note and run **ICS Calendar: Import events**, confirm event lines
+   are inserted, then undo. The command is an editor callback that writes into the focused
+   note — it is not a connection test, and it aborts with a daily-notes error anywhere else.
 
 `SETUP.md` gains these steps, the module-code naming convention (§5.2), and the lag
 measurement (§4).
@@ -245,7 +247,7 @@ measurement (§4).
 
 ## 11. Acceptance
 
-- [ ] Secret URL configured; `ICS: Import events` reports events
+- [ ] Secret URL configured; **ICS Calendar: Import events**, run in today's daily note, inserts event lines (then undo)
 - [ ] **Next up** shows today's real events in order
 - [ ] All-day events pin to the top; a multi-day event shows its correct last day
 - [ ] The now line appears only when events exist on both sides of it

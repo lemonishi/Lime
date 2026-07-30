@@ -58,7 +58,7 @@ Requires **Obsidian 1.12.7+** and **Node 24**. Zero npm dependencies.
 ```bash
 git clone https://github.com/lemonishi/Lime.git
 cd Lime
-npm test               # 19 tests, no install step needed
+npm test               # 56 tests, no install step needed
 npm run install-plugins  # only if plugin versions have drifted
 ```
 
@@ -93,7 +93,7 @@ Each milestone ends in a checkpoint: use it for a few days, then the next one ge
 
 ## Design docs
 
-The full reasoning lives in [`docs/superpowers/`](docs/superpowers/) — a design spec covering every decision and why, and the M1 implementation plan. Worth reading if you want the *why* rather than the *what*.
+The full reasoning lives in [`docs/superpowers/`](docs/superpowers/) — a design spec per milestone covering every decision and why, plus the matching implementation plans. Worth reading if you want the *why* rather than the *what*.
 
 ## Privacy
 

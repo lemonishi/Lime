@@ -193,7 +193,7 @@ Work through this before we plan M2.
 
 ## M2 acceptance checklist
 
-- [ ] Secret URL configured; **ICS: Import events** reports events
+- [ ] Secret URL configured; **ICS Calendar: Import events**, run in today's daily note, inserts event lines (then undo)
 - [ ] **Next up** shows today's real events in the right order
 - [ ] All-day events sit at the top of their day and are not dimmed
 - [ ] A multi-day all-day event shows its correct **last** day, not one day later
