@@ -54,6 +54,42 @@ Windows PC and the iPhone.
 The banner image is dark and heavily saturated (spec §8). It sits naturally on a
 dark theme and will read as a heavy dark block on a light one.
 
+## Connect your Google Calendar
+
+The vault reads your calendar; it never writes to it. Google Calendar stays the
+place you create and edit events.
+
+1. Open **Google Calendar** in a browser (not the phone app — the secret address
+   is only exposed in the web UI)
+2. Hover your calendar in the left sidebar → **⋮ → Settings and sharing**
+3. Scroll to **Integrate calendar**
+4. Copy **Secret address in iCal format**. Google will warn you not to share it —
+   that warning is real, see below
+5. In Obsidian: **Settings → ICS → add a calendar**, give it a name, paste the URL
+6. Run the **ICS: Import events** command once. If it reports nothing, the usual
+   cause is having copied the public address instead of the secret one
+
+> **The secret address grants read access to your whole calendar to anyone who
+> has it.** It is stored in `.obsidian/plugins/ics/data.json`, which is gitignored
+> — this repository is public, so that file must never be committed. Do not add a
+> `.gitignore` negation for it.
+
+### Naming convention for exam and class events
+
+The **Upcoming dates** panel links calendar events to your module notes by looking
+for the module code in the event title. So name events like:
+
+- `CS3230 Midterm` ✅ — links to `02-Learning/Modules/CS3230.md`
+- `Midterm` ❌ — shows in *Next up* on the day, but never in *Upcoming dates*
+
+This is why exam dates are not stored in your module notes: the date lives in
+Google Calendar only, so changing it on your phone updates everything at once and
+nothing can go stale. The cost is the naming habit.
+
+**Module codes must be unique ignoring case.** The join matches case-insensitively,
+so two module notes whose `code` differs only by case — `cs3230` and `CS3230` — would
+collide, and a click could open the wrong note. Pick one casing and keep to it.
+
 ## A note on Open Tab Settings
 
 Installed so the quick switcher (`Cmd+O`), links, and the file explorer **focus a
@@ -126,8 +162,32 @@ Work through this before we plan M2.
 - [ ] On iPhone: the vault syncs, the dashboard renders as one column, the banner is short
 - [x] `npm test` passes ✅ 2026-07-29
 
-## What is deliberately missing in M1
+## M2 acceptance checklist
 
-Calendar events (M2), capture buttons (M3), learning panels (M4), job search and
-spending (M5), needs-attention (M6). The right-hand column is empty on purpose —
+- [ ] Secret URL configured; **ICS: Import events** reports events
+- [ ] **Next up** shows today's real events in the right order
+- [ ] All-day events sit at the top of their day and are not dimmed
+- [ ] A multi-day all-day event shows its correct **last** day, not one day later
+- [ ] The `NOW` line appears only when events exist both before and after it
+- [ ] Tomorrow's events appear under the divider; the divider is absent when tomorrow is clear
+- [ ] Past events are dimmed but still listed; an event happening right now is **not** dimmed
+- [ ] An event with a Google Meet or Zoom link opens the call when clicked
+- [ ] **Upcoming dates** shows an exam whose title contains a module code, and clicking opens the module note
+- [ ] Disable the ICS plugin → **Next up** says so rather than rendering nothing
+- [ ] Typing in a daily note does not stall the dashboard (the 5-minute cache is working)
+- [ ] **Lag measurement — the point of shipping this way.** Add an event on your phone for later today. Note the time. Check the dashboard every so often and record when it appears:
+
+      event created at: ______    appeared in Obsidian at: ______
+
+      Under ~15 minutes → done, no M2.5 needed.
+      Hours → M2.5 (OAuth reads) is justified. Record the result in
+      `docs/superpowers/specs/2026-07-29-m2-calendar-design.md` §4 either way.
+
+## What is deliberately missing so far
+
+Capture buttons (M3), learning panels (M4), job search and spending (M5),
+needs-attention (M6). The right-hand column of the dashboard is empty on purpose —
 M4 and M5 fill it.
+
+Writing events *from* Obsidian is not planned: Google Calendar stays the place you
+create and edit events, which is what keeps three devices from fighting over them.
