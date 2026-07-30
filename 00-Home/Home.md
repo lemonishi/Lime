@@ -38,7 +38,7 @@ const todayISO = L.fmtISO(now);
 const grid = dv.container.createDiv({ cls: 'lime-grid' });
 const colLeft = grid.createDiv({ cls: 'lime-col' });
 const colMid = grid.createDiv({ cls: 'lime-col' });
-// colRight stays empty in M1 — learning progress and spending arrive in M4/M5.
+// colRight stays empty until M4/M5 bring learning progress and spending.
 const colRight = grid.createDiv({ cls: 'lime-col' });
 
 function panel(col, title) {
@@ -122,7 +122,7 @@ const EVENTS = CAL.events;
   // at all, says so out loud — otherwise a dead feed reads as a free day.
   const implausible = !CAL.problem && EVENTS.length === 0;
   const message = CAL.problem
-    || (implausible ? `No events in ${EVENT_DAYS} days — check ICS settings if that looks wrong` : null);
+    || (implausible ? `No events in ${EVENT_DAYS} days — either genuinely clear, or the feed is failing silently. Check ICS settings and the console.` : null);
 
   if (message) {
     const p = panel(colMid, 'Next up');
@@ -132,18 +132,20 @@ const EVENTS = CAL.events;
 
     const eventRow = (parent, event, opts) => {
       const row = parent.createDiv({ cls: `lime-row${opts.past ? ' lime-past' : ''}${event.allDay ? ' lime-allday' : ''}` });
+      let label;
       if (event.allDay) {
-        row.createSpan({ cls: 'lime-text', text: event.summary });
+        label = row.createSpan({ cls: 'lime-text', text: event.summary });
         const last = L.allDayLastDayISO(event);
         row.createSpan({ cls: 'lime-meta', text: last === opts.dayISO ? 'all day' : `until ${L.fmtShortDate(last)}` });
       } else {
         row.createSpan({ cls: 'lime-time', text: event.time });
-        row.createSpan({ cls: 'lime-text', text: event.summary });
+        label = row.createSpan({ cls: 'lime-text', text: event.summary });
       }
-      if (event.callUrl) {
+      // callUrl arrives from a remote feed via best-effort pattern matching, so it
+      // is not guaranteed URL-shaped. Gate on http(s) and pass noopener.
+      if (/^https?:\/\//.test(String(event.callUrl || ''))) {
         row.addClass('lime-joinable');
-        const text = row.querySelector('.lime-text');
-        text.addEventListener('click', () => window.open(event.callUrl, '_blank'));
+        label.addEventListener('click', () => window.open(event.callUrl, '_blank', 'noopener,noreferrer'));
       }
       return row;
     };
@@ -169,7 +171,7 @@ const EVENTS = CAL.events;
 }
 
 // ── DUE & OVERDUE (middle column) ────────────────────────────────────────
-// M2 inserts the calendar events panel above this one.
+// The Next up panel sits above this one.
 {
   const tasks = dv.pages()
     .where((p) => !p.file.path.startsWith('_templates/'))
@@ -224,6 +226,30 @@ const EVENTS = CAL.events;
         }
         if (!rewrote) cb.checked = false;
       });
+    }
+  }
+}
+
+// ── UPCOMING DATES (middle column, below Due & overdue) ──────────────────
+// Joins calendar events to module notes on the module CODE, so an exam date is
+// stored once — in Google Calendar — and cannot drift (spec M2-D3).
+{
+  const modules = dv.pages('"02-Learning/Modules"')
+    .where((p) => p.code)
+    .array()
+    .map((p) => ({ code: String(p.code), path: p.file.path }));
+
+  const byCode = new Map(modules.map((m) => [m.code.toUpperCase(), m.path]));
+  const matches = L.matchModuleEvents(EVENTS, modules.map((m) => m.code));
+
+  if (matches.length > 0) {
+    const p = panel(colMid, 'Upcoming dates');
+    for (const { event, code } of matches) {
+      const row = p.createDiv({ cls: 'lime-row' });
+      const text = row.createSpan({ cls: 'lime-text', text: event.summary });
+      row.createSpan({ cls: 'lime-meta', text: L.fmtShortDate(L.eventStartISO(event)) });
+      const path = byCode.get(code.toUpperCase());
+      if (path) text.addEventListener('click', () => openNote(path));
     }
   }
 }
