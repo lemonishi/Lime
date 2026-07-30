@@ -97,10 +97,16 @@
 
 /* ── calendar events ─────────────────────────────────────────────────────── */
 
-/* Fixed-width time column so summaries align down the panel. */
+/* Time column sized so summaries align down the panel.
+   min-width rather than width: the ICS plugin's time format is user-configurable
+   and defaults to HH:mm ("14:00", 5 chars), but a 12-hour setting emits
+   "11:00 pm" (8 chars). A fixed 3.4em would wrap that onto a second line and
+   destroy the alignment this rule exists to create. Since every row shares one
+   format, min-width keeps them aligned at whatever that format needs. */
 .lime-row .lime-time {
   flex: none;
-  width: 3.4em;
+  min-width: 3.4em;
+  white-space: nowrap;
   opacity: 0.55;
   font-variant-numeric: tabular-nums;
 }
@@ -154,8 +160,8 @@
   line-height: 1.4;
 }
 
-/* Rows carrying a meeting link. */
-.lime-row.lime-joinable .lime-text { cursor: pointer; }
+/* Rows carrying a meeting link. .lime-text already sets cursor: pointer for
+   every row, so only the hover affordance is new here. */
 .lime-row.lime-joinable .lime-text:hover { text-decoration: underline; }
 
 /* Layout A is dense by design (spec §8). Obsidian's readable-line-length would
