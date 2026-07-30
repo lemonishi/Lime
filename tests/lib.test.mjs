@@ -90,6 +90,68 @@ test('cleanTaskText leaves an unmarked task alone', () => {
   assert.equal(lime.cleanTaskText('renew student pass'), 'renew student pass');
 });
 
+test('eventStartISO uses the date part directly for all-day events', () => {
+  // All-day events carry a bare date. Parsing it as a Date and reformatting can
+  // shift it a day depending on timezone, so the string is used as-is.
+  assert.equal(
+    lime.eventStartISO({ allDay: true, startDateTime: '2026-08-12T00:00:00+08:00' }),
+    '2026-08-12'
+  );
+});
+
+test('eventStartISO uses local time for timed events', () => {
+  // The instant is built from LOCAL parts and serialised, so this expectation
+  // holds in any timezone. Reporting the LOCAL day is the whole point of the
+  // function — a fixture with a hardcoded offset would pass or fail depending
+  // on where the machine is, which is not what we want to be testing.
+  const local = new Date(2026, 6, 30, 14, 0);
+  assert.equal(
+    lime.eventStartISO({ allDay: false, startDateTime: local.toISOString() }),
+    '2026-07-30'
+  );
+});
+
+test('allDayLastDayISO subtracts a day because the plugin end is exclusive', () => {
+  // The plugin documents this: a holiday running through Sep 14 reports an
+  // endDateTime of Sep 15 00:00. Displaying the raw end is off by one.
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-09-10T00:00:00+08:00', endDateTime: '2026-09-15T00:00:00+08:00' }),
+    '2026-09-14'
+  );
+});
+
+test('allDayLastDayISO handles a single-day all-day event', () => {
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-08-12T00:00:00+08:00', endDateTime: '2026-08-13T00:00:00+08:00' }),
+    '2026-08-12'
+  );
+});
+
+test('allDayLastDayISO crosses a month boundary correctly', () => {
+  assert.equal(
+    lime.allDayLastDayISO({ allDay: true, startDateTime: '2026-07-30T00:00:00+08:00', endDateTime: '2026-08-01T00:00:00+08:00' }),
+    '2026-07-31'
+  );
+});
+
+test('fmtShortDate renders a compact day and month', () => {
+  assert.equal(lime.fmtShortDate('2026-08-12'), '12 Aug');
+  assert.equal(lime.fmtShortDate('2026-01-05'), '5 Jan');
+});
+
+test('isCacheFresh accepts a recent entry and rejects a stale one', () => {
+  const now = 1_000_000;
+  assert.equal(lime.isCacheFresh({ at: now - 1000, data: [] }, now, 5000), true);
+  assert.equal(lime.isCacheFresh({ at: now - 9000, data: [] }, now, 5000), false);
+});
+
+test('isCacheFresh rejects a missing or malformed entry', () => {
+  const now = 1_000_000;
+  assert.equal(lime.isCacheFresh(null, now, 5000), false);
+  assert.equal(lime.isCacheFresh(undefined, now, 5000), false);
+  assert.equal(lime.isCacheFresh({ data: [] }, now, 5000), false);
+});
+
 test('compareTasks sorts most-overdue first, undated last', () => {
   const tasks = [
     { id: 'undated', dueISO: null },

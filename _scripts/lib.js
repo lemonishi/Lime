@@ -67,6 +67,44 @@ function cleanTaskText(text) {
     .trim();
 }
 
+// ── calendar events ──────────────────────────────────────────────────────────
+//
+// Shapes ICS Calendar plugin events (its IEvent interface) for display. Stays
+// pure: takes plain objects, returns plain data, touches no plugin API.
+
+// Which local day an event belongs to.
+//
+// All-day events carry a bare date at midnight. Round-tripping that through Date
+// and back can shift it a day depending on the offset, so its date part is taken
+// verbatim. Timed events are parsed, because their local day is what matters.
+function eventStartISO(event) {
+  if (event.allDay) return String(event.startDateTime).slice(0, 10);
+  return fmtISO(new Date(event.startDateTime));
+}
+
+// An all-day event's true final day.
+//
+// The plugin documents that all-day DTEND is EXCLUSIVE: an event running through
+// Sep 14 reports endDateTime of Sep 15 00:00. Showing the raw end is off by one.
+function allDayLastDayISO(event) {
+  const end = parseISO(String(event.endDateTime).slice(0, 10));
+  end.setDate(end.getDate() - 1);
+  return fmtISO(end);
+}
+
+function fmtShortDate(iso) {
+  const d = parseISO(iso);
+  return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+// The ICS plugin re-downloads and re-parses the whole feed on every getEvents()
+// call, and Dataview re-renders on any vault change — so without a cache every
+// keystroke in a daily note costs a calendar download.
+function isCacheFresh(entry, nowMs, ttlMs) {
+  if (!entry || typeof entry.at !== 'number') return false;
+  return nowMs - entry.at < ttlMs;
+}
+
 // Undated tasks sink to the bottom; everything else is chronological, so the
 // most-overdue item is always the first thing read.
 function compareTasks(a, b) {
@@ -76,4 +114,8 @@ function compareTasks(a, b) {
   return a.dueISO < b.dueISO ? -1 : a.dueISO > b.dueISO ? 1 : 0;
 }
 
-globalThis.lime = { fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks, parseISO, daysBetween };
+globalThis.lime = {
+  fmtISO, fmtDayLabel, relativeAge, dueStatus, cleanTaskText, compareTasks,
+  parseISO, daysBetween,
+  eventStartISO, allDayLastDayISO, fmtShortDate, isCacheFresh,
+};
